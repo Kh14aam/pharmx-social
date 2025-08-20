@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MessageSquare, Phone, Heart, X, MapPin, Briefcase, GraduationCap, Music, Camera, Coffee } from "lucide-react"
 
-// Mock data with more details and images
+// Mock data with single profile images
 const mockUsers = [
   {
     id: "1",
@@ -15,10 +15,7 @@ const mockUsers = [
     bio: "Love hiking and coffee. Always up for a good conversation!",
     location: "London",
     occupation: "Product Designer",
-    images: [
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&h=600&fit=crop"
-    ],
+    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=600&fit=crop",
     interests: ["Hiking", "Coffee", "Design", "Travel"],
     verified: true
   },
@@ -29,10 +26,7 @@ const mockUsers = [
     bio: "Tech enthusiast, foodie, and amateur photographer.",
     location: "Manchester",
     occupation: "Software Engineer",
-    images: [
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=600&fit=crop"
-    ],
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop",
     interests: ["Tech", "Photography", "Food", "Gaming"],
     verified: true
   },
@@ -43,10 +37,7 @@ const mockUsers = [
     bio: "Yoga instructor. Spreading positivity one breath at a time.",
     location: "Brighton",
     occupation: "Yoga Instructor",
-    images: [
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=600&fit=crop"
-    ],
+    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop",
     interests: ["Yoga", "Meditation", "Health", "Nature"],
     verified: false
   },
@@ -57,10 +48,7 @@ const mockUsers = [
     bio: "Music lover, book worm, and weekend chef.",
     location: "Edinburgh",
     occupation: "Marketing Manager",
-    images: [
-      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1507081323647-4d250478b919?w=400&h=600&fit=crop"
-    ],
+    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=600&fit=crop",
     interests: ["Music", "Books", "Cooking", "Wine"],
     verified: true
   },
@@ -71,10 +59,7 @@ const mockUsers = [
     bio: "Travel addict. 30 countries and counting!",
     location: "Bristol",
     occupation: "Travel Blogger",
-    images: [
-      "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=600&fit=crop"
-    ],
+    image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=600&fit=crop",
     interests: ["Travel", "Photography", "Culture", "Adventure"],
     verified: true
   },
@@ -85,27 +70,23 @@ const mockUsers = [
     bio: "Fitness coach helping you reach your goals.",
     location: "Leeds",
     occupation: "Personal Trainer",
-    images: [
-      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=400&h=600&fit=crop"
-    ],
+    image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=600&fit=crop",
     interests: ["Fitness", "Nutrition", "Sports", "Outdoors"],
     verified: false
   }
 ]
 
 export default function UsersPage() {
-  const [currentImageIndex, setCurrentImageIndex] = useState<{[key: string]: number}>({})
   const [likedUsers, setLikedUsers] = useState<Set<string>>(new Set())
 
   const handleMessage = (userId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    alert("💳 Membership Required\n\nUpgrade to PharmX Voice Premium for £5/month to message users directly.")
+    alert("💳 Membership Required\n\nUpgrade to PharmX Premium for £5/month to message users directly.")
   }
 
   const handleCall = (userId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    alert("💳 Membership Required\n\nUpgrade to PharmX Voice Premium for £5/month to call users directly.")
+    alert("💳 Membership Required\n\nUpgrade to PharmX Premium for £5/month to call users directly.")
   }
 
   const handleLike = (userId: string, e: React.MouseEvent) => {
@@ -121,63 +102,37 @@ export default function UsersPage() {
     })
   }
 
-  const handleCardClick = (userId: string) => {
-    // Cycle through images
-    const user = mockUsers.find(u => u.id === userId)
-    if (user && user.images.length > 1) {
-      const currentIndex = currentImageIndex[userId] || 0
-      const nextIndex = (currentIndex + 1) % user.images.length
-      setCurrentImageIndex(prev => ({ ...prev, [userId]: nextIndex }))
-    }
-  }
-
   return (
     <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4">
       {/* Header */}
       <div className="mb-4 px-2">
         <h1 className="text-2xl font-bold">Discover</h1>
         <p className="text-sm text-muted-foreground">
-          Tap cards to see more photos
+          Find people nearby to connect with
         </p>
       </div>
 
       {/* User Grid - Picture Focused */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
         {mockUsers.map((user) => {
-          const imageIndex = currentImageIndex[user.id] || 0
           const isLiked = likedUsers.has(user.id)
           
           return (
             <Card 
               key={user.id} 
-              className="overflow-hidden cursor-pointer group hover:shadow-xl transition-all duration-300 border-0"
-              onClick={() => handleCardClick(user.id)}
+              className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-0"
             >
               <div className="relative aspect-[3/4]">
                 {/* Main Image */}
                 <div 
                   className="absolute inset-0 bg-cover bg-center"
                   style={{ 
-                    backgroundImage: `url(${user.images[imageIndex]})`,
+                    backgroundImage: `url(${user.image})`,
                   }}
                 >
                   {/* Gradient Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80" />
                 </div>
-
-                {/* Image Indicators */}
-                {user.images.length > 1 && (
-                  <div className="absolute top-2 left-0 right-0 flex justify-center gap-1 px-2">
-                    {user.images.map((_, idx) => (
-                      <div
-                        key={idx}
-                        className={`h-0.5 flex-1 rounded-full transition-all ${
-                          idx === imageIndex ? 'bg-white' : 'bg-white/40'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                )}
 
                 {/* Verified Badge */}
                 {user.verified && (
