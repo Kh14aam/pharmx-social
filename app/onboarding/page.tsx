@@ -149,7 +149,7 @@ export default function OnboardingPage() {
                   </AvatarFallback>
                 )}
               </Avatar>
-              <Label htmlFor="avatar" className="cursor-pointer">
+              <div>
                 <Input
                   id="avatar"
                   type="file"
@@ -158,16 +158,15 @@ export default function OnboardingPage() {
                   onChange={handleAvatarUpload}
                   disabled={uploading}
                 />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  disabled={uploading}
-                  className="bg-white hover:bg-gray-100 text-black border-gray-300"
+                <Label 
+                  htmlFor="avatar" 
+                  className="cursor-pointer inline-block"
                 >
-                  {uploading ? "Uploading..." : "Upload Photo"}
-                </Button>
-              </Label>
+                  <div className="bg-white hover:bg-gray-100 text-black border border-gray-300 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                    {uploading ? "Uploading..." : "Upload Photo"}
+                  </div>
+                </Label>
+              </div>
             </div>
 
             {/* Name Input */}
@@ -219,10 +218,12 @@ export default function OnboardingPage() {
               <Input
                 id="dob"
                 type="date"
+                placeholder="mm/dd/yyyy"
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 {...register("dob")}
                 max={format(new Date(), "yyyy-MM-dd")}
               />
+              <p className="text-xs text-gray-500">You must be 18 or older</p>
               {errors.dob && (
                 <p className="text-sm text-red-500">{errors.dob.message}</p>
               )}
@@ -252,7 +253,7 @@ export default function OnboardingPage() {
               className="w-full bg-black hover:bg-gray-900 text-white font-semibold py-3 rounded-lg transition-colors"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Creating Profile..." : "Complete Setup"}
+              {isSubmitting ? "Creating Profile..." : "Complete Profile"}
             </Button>
           </form>
         </div>
