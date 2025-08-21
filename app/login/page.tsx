@@ -14,13 +14,24 @@ export default function LoginPage() {
 
   const handleGoogleLogin = () => {
     setIsLoading(true)
+    
+    // Debug: Log environment variables (remove in production)
+    console.log('Auth0 Config:', {
+      issuerBase: process.env.NEXT_PUBLIC_AUTH0_ISSUER_BASE_URL,
+      clientId: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID,
+    })
+    
     // Redirect directly to Auth0 for authentication
     const baseUrl = 'https://chat.pharmx.co.uk'
     const issuerBase = process.env.NEXT_PUBLIC_AUTH0_ISSUER_BASE_URL || ''
     const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID || ''
     
     if (!issuerBase || !clientId) {
-      console.error('Auth0 configuration missing')
+      console.error('Auth0 configuration missing:', {
+        issuerBase: issuerBase || 'NOT SET',
+        clientId: clientId || 'NOT SET'
+      })
+      alert('Authentication is not configured. Please check Auth0 settings.')
       setIsLoading(false)
       return
     }
@@ -33,6 +44,7 @@ export default function LoginPage() {
     authUrl.searchParams.set('connection', 'google-oauth2')
     authUrl.searchParams.set('state', Buffer.from(JSON.stringify({ returnTo: '/onboarding' })).toString('base64'))
     
+    console.log('Redirecting to Auth0:', authUrl.toString())
     window.location.href = authUrl.toString()
   }
 
