@@ -32,7 +32,7 @@ export default function Home() {
           
           {/* Find a Voice Button */}
           <div className="pt-8">
-            <Link href="/app/voice">
+            <Link href="/login">
               <Button 
                 size="lg"
                 className="bg-white text-black hover:bg-white/90 h-14 px-8 text-lg font-medium rounded-full transition-all hover:scale-105"
@@ -41,47 +41,6 @@ export default function Home() {
                 Find a Voice
               </Button>
             </Link>
-          </div>
-        </div>
-        
-        {/* Development Mode Links - Positioned at bottom */}
-        <div className="absolute bottom-8 left-0 right-0 px-4">
-          <div className="max-w-2xl mx-auto">
-            <div className="p-4 bg-black/50 backdrop-blur-sm rounded-xl border border-white/10">
-              <p className="text-xs text-center mb-3 text-yellow-300">⚠️ Development Mode</p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                <Link href="/test">
-                  <Button size="sm" variant="ghost" className="text-white hover:text-white hover:bg-white/10">
-                    🧪 Test Page
-                  </Button>
-                </Link>
-                <Link href="/api/health">
-                  <Button size="sm" variant="ghost" className="text-white hover:text-white hover:bg-white/10">
-                    🏥 Health Check
-                  </Button>
-                </Link>
-                <Link href="/app/users">
-                  <Button size="sm" variant="ghost" className="text-white hover:text-white hover:bg-white/10">
-                    👥 Users
-                  </Button>
-                </Link>
-                <Link href="/app/chats">
-                  <Button size="sm" variant="ghost" className="text-white hover:text-white hover:bg-white/10">
-                    💬 Chats
-                  </Button>
-                </Link>
-                <Link href="/onboarding">
-                  <Button size="sm" variant="ghost" className="text-white hover:text-white hover:bg-white/10">
-                    ✏️ Onboarding
-                  </Button>
-                </Link>
-                <Link href="/settings">
-                  <Button size="sm" variant="ghost" className="text-white hover:text-white hover:bg-white/10">
-                    ⚙️ Settings
-                  </Button>
-                </Link>
-              </div>
-            </div>
           </div>
         </div>
       </div>
