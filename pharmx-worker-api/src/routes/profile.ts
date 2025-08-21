@@ -48,9 +48,9 @@ profileRoutes.get('/', verifyAuth, async (c) => {
 // Create or update user profile (for onboarding)
 profileRoutes.post('/', verifyAuth, async (c) => {
   const userId = c.get('userId')
-  const userEmail = c.get('userEmail')
+  const userEmail = c.get('userEmail') || `${c.get('userId')}@temp.pharmx.co.uk`
   
-  console.log(`[Profile] Creating/updating profile for user ${userId}`)
+  console.log(`[Profile] Creating/updating profile for user ${userId} with email ${userEmail}`)
   
   let body: any = {}
   try {
@@ -78,48 +78,75 @@ profileRoutes.post('/', verifyAuth, async (c) => {
 
   try {
     // Check if user already exists
+    console.log(`[Profile] Checking if user ${userId} exists...`)
     const existing = await c.env.DB.prepare(
       'SELECT id, email FROM users WHERE id = ?'
     ).bind(userId).first()
     
     if (existing) {
-      // Update existing user - allow updating all fields
-      const result = await c.env.DB.prepare(
-        `UPDATE users 
-         SET name = ?, 
-             email = COALESCE(?, email),
-             gender = ?, 
-             date_of_birth = ?, 
-             bio = ?, 
-             location = ?,
-             avatar_url = CASE WHEN ? IS NOT NULL THEN ? ELSE avatar_url END, 
-             image_key = CASE WHEN ? IS NOT NULL THEN ? ELSE image_key END, 
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`
-      ).bind(
-        name, 
-        userEmail,
-        gender, 
-        dob, 
-        bio, 
-        location,
-        avatarUrl, avatarUrl,
-        imageKey, imageKey,
-        userId
-      ).run()
+      console.log(`[Profile] User exists, updating profile...`)
+      console.log(`[Profile] Update params - name: ${name}, email: ${userEmail}, gender: ${gender}, dob: ${dob}, bio: ${bio}, location: ${location}, avatarUrl: ${avatarUrl}, imageKey: ${imageKey}`)
       
-      if (!result.success) {
-        throw new Error('Failed to update user profile')
+      // Update existing user - allow updating all fields
+      try {
+        const result = await c.env.DB.prepare(
+          `UPDATE users 
+           SET name = ?, 
+               email = COALESCE(?, email),
+               gender = ?, 
+               date_of_birth = ?, 
+               bio = ?, 
+               location = ?,
+               avatar_url = CASE WHEN ? IS NOT NULL THEN ? ELSE avatar_url END, 
+               image_key = CASE WHEN ? IS NOT NULL THEN ? ELSE image_key END, 
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`
+        ).bind(
+          name, 
+          userEmail,
+          gender, 
+          dob, 
+          bio, 
+          location,
+          avatarUrl, avatarUrl,
+          imageKey, imageKey,
+          userId
+        ).run()
+        
+        console.log(`[Profile] Update result:`, result)
+        
+        if (!result.success) {
+          console.error('[Profile] Update failed - result not successful')
+          throw new Error('Database update returned unsuccessful')
+        }
+        
+        console.log(`[Profile] Successfully updated profile for user ${userId}`)
+      } catch (updateError) {
+        console.error('[Profile] Error during UPDATE query:', updateError)
+        throw new Error(`Update failed: ${updateError instanceof Error ? updateError.message : 'Unknown error'}`)
       }
     } else {
-      // Create new user
-      const result = await c.env.DB.prepare(
-        `INSERT INTO users (id, email, name, gender, date_of_birth, bio, location, avatar_url, image_key, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-      ).bind(userId, userEmail, name, gender, dob, bio, location, avatarUrl, imageKey).run()
+      console.log(`[Profile] User does not exist, creating new profile...`)
+      console.log(`[Profile] Insert params - id: ${userId}, email: ${userEmail}, name: ${name}, gender: ${gender}, dob: ${dob}, bio: ${bio}, location: ${location}, avatarUrl: ${avatarUrl}, imageKey: ${imageKey}`)
       
-      if (!result.success) {
-        throw new Error('Failed to create user profile')
+      // Create new user
+      try {
+        const result = await c.env.DB.prepare(
+          `INSERT INTO users (id, email, name, gender, date_of_birth, bio, location, avatar_url, image_key, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+        ).bind(userId, userEmail, name, gender, dob, bio, location, avatarUrl, imageKey).run()
+        
+        console.log(`[Profile] Insert result:`, result)
+        
+        if (!result.success) {
+          console.error('[Profile] Insert failed - result not successful')
+          throw new Error('Database insert returned unsuccessful')
+        }
+        
+        console.log(`[Profile] Successfully created profile for user ${userId}`)
+      } catch (insertError) {
+        console.error('[Profile] Error during INSERT query:', insertError)
+        throw new Error(`Insert failed: ${insertError instanceof Error ? insertError.message : 'Unknown error'}`)
       }
     }
     

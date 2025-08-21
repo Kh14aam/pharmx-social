@@ -42,17 +42,28 @@ upload.post('/avatar', verifyAuth, async (c) => {
     // If user doesn't exist, create a minimal profile first
     if (!existingUser) {
       console.log(`[Upload] Creating user profile for ${userId} during avatar upload`)
+      console.log(`[Upload] User email: ${userEmail}`)
+      
+      // Ensure we have an email - use a placeholder if not provided
+      const emailToUse = userEmail || `${userId}@temp.pharmx.co.uk`
+      
       try {
-        await c.env.DB.prepare(
+        const createResult = await c.env.DB.prepare(
           `INSERT INTO users (id, email, created_at, updated_at)
            VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-        ).bind(userId, userEmail || `${userId}@placeholder.com`).run()
+        ).bind(userId, emailToUse).run()
+        
+        console.log(`[Upload] User creation result:`, createResult)
+        
+        if (!createResult.success) {
+          console.error('[Upload] Failed to create user - might already exist')
+        }
       } catch (dbError) {
         console.error('[Upload] Error creating user:', dbError)
         // Continue anyway - the user might already exist
       }
     } else {
-      console.log(`[Upload] User ${userId} already exists`)
+      console.log(`[Upload] User ${userId} already exists with email: ${existingUser.email}`)
     }
     
     // Parse the multipart form data
