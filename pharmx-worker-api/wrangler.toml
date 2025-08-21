@@ -17,6 +17,11 @@ database_id = "9050344e-9b99-4651-a0cc-a5eaeed7c39d"
 binding = "SESSIONS"
 id = "1140c2d4954340bd8bf15960f3b9df45"
 
+# R2 bucket for avatar storage
+[[r2_buckets]]
+binding = "AVATARS"
+bucket_name = "pharmx-avatars"
+
 # Durable Objects for real-time features
 [[durable_objects.bindings]]
 name = "MATCHMAKING_QUEUE"

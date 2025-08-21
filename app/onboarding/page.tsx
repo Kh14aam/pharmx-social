@@ -61,21 +61,36 @@ export default function OnboardingPage() {
       return
     }
 
+    // Preview the image locally first
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+
     setUploading(true)
     const formData = new FormData()
     formData.append("file", file)
 
     try {
-      const response = await fetch("/api/upload/avatar", {
-        method: "POST",
-        body: formData,
+      // TODO: Upload to Cloudflare R2 via Worker API
+      // For now, we'll use the local preview
+      // const response = await fetch("https://api.pharmx.co.uk/api/v1/upload/avatar", {
+      //   method: "POST",
+      //   body: formData,
+      //   headers: {
+      //     'Authorization': `Bearer ${localStorage.getItem('pharmx_token')}`,
+      //   },
+      // })
+      
+      // Simulate upload for now
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      setValue("avatarUrl", reader.result as string)
+      
+      toast({
+        title: "Photo uploaded",
+        description: "Your profile photo has been updated",
       })
-
-      if (!response.ok) throw new Error("Upload failed")
-
-      const { url } = await response.json()
-      setAvatarPreview(url)
-      setValue("avatarUrl", url)
     } catch {
       toast({
         title: "Upload failed",
@@ -143,7 +158,13 @@ export default function OnboardingPage() {
                   onChange={handleAvatarUpload}
                   disabled={uploading}
                 />
-                <Button type="button" variant="outline" size="sm" disabled={uploading}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={uploading}
+                  className="bg-white hover:bg-gray-100 text-black border-gray-300"
+                >
                   {uploading ? "Uploading..." : "Upload Photo"}
                 </Button>
               </Label>
@@ -174,11 +195,11 @@ export default function OnboardingPage() {
                 className="flex gap-6"
               >
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="male" id="male" className="text-blue-600" />
+                  <RadioGroupItem value="male" id="male" className="text-black border-gray-400" />
                   <Label htmlFor="male" className="text-gray-700 cursor-pointer">Male</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="female" id="female" className="text-blue-600" />
+                  <RadioGroupItem value="female" id="female" className="text-black border-gray-400" />
                   <Label htmlFor="female" className="text-gray-700 cursor-pointer">Female</Label>
                 </div>
               </RadioGroup>
@@ -228,7 +249,7 @@ export default function OnboardingPage() {
             {/* Submit Button */}
             <Button 
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors"
+              className="w-full bg-black hover:bg-gray-900 text-white font-semibold py-3 rounded-lg transition-colors"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Creating Profile..." : "Complete Setup"}

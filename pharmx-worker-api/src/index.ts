@@ -4,6 +4,7 @@ import { authRoutes } from './routes/auth'
 import { profileRoutes } from './routes/profile'
 import { usersRoutes } from './routes/users'
 import { chatsRoutes } from './routes/chats'
+import uploadRoutes from './routes/upload'
 
 // Export Durable Objects
 export { MatchmakingQueue } from './durable-objects/MatchmakingQueue'
@@ -12,6 +13,7 @@ export { ChatRoom } from './durable-objects/ChatRoom'
 export interface Env {
   DB: D1Database
   SESSIONS: KVNamespace
+  AVATARS: R2Bucket
   MATCHMAKING_QUEUE: DurableObjectNamespace
   CHAT_ROOMS: DurableObjectNamespace
   AUTH0_DOMAIN: string
@@ -59,6 +61,7 @@ api.route('/auth', authRoutes)
 api.route('/profile', profileRoutes)
 api.route('/users', usersRoutes)
 api.route('/chats', chatsRoutes)
+api.route('/upload', uploadRoutes)
 
 // 404 handler
 app.notFound((c) => {
