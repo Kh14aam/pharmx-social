@@ -1,10 +1,22 @@
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { Mic } from "lucide-react"
+
+const ShaderAnimation = dynamic(
+  () => import("@/components/ui/shader-animation").then(mod => mod.ShaderAnimation),
+  { 
+    ssr: false,
+    loading: () => <div className="w-full h-screen bg-black" />
+  }
+)
 
 export default function Home() {
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-gradient-to-br from-purple-900 via-black to-blue-900">
+    <div className="relative w-full h-screen overflow-hidden">
+      {/* Shader Animation Background */}
+      <ShaderAnimation />
+      
       {/* Content Overlay */}
       <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
         <div className="text-center space-y-6">
