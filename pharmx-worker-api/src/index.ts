@@ -16,11 +16,14 @@ export interface Env {
   AVATARS: R2Bucket
   MATCHMAKING_QUEUE: DurableObjectNamespace
   CHAT_ROOMS: DurableObjectNamespace
-  AUTH0_DOMAIN: string
-  AUTH0_CLIENT_ID: string
-  AUTH0_CLIENT_SECRET: string
+  AUTH0_DOMAIN?: string
+  AUTH0_CLIENT_ID?: string
+  AUTH0_CLIENT_SECRET?: string
+  AUTH0_ISSUER_BASE_URL?: string
+  AUTH0_BASE_URL?: string
+  NEXT_PUBLIC_AUTH0_CLIENT_ID?: string
   JWT_SECRET: string
-  FRONTEND_URL: string
+  FRONTEND_URL?: string
   TURN_USERNAME?: string
   TURN_CREDENTIAL?: string
   ENVIRONMENT?: string

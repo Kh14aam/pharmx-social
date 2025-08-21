@@ -6,10 +6,28 @@ export const authRoutes = new Hono<{ Bindings: Env }>()
 
 // Login endpoint - redirect to Auth0
 authRoutes.get('/login', (c) => {
-  const authUrl = new URL(`https://${c.env.AUTH0_DOMAIN}/authorize`)
+  // Resolve domain and client id from multiple possible variable names
+  const issuer = c.env.AUTH0_ISSUER_BASE_URL || c.env.AUTH0_BASE_URL || ''
+  const resolvedDomain = c.env.AUTH0_DOMAIN || (issuer ? issuer.replace(/^https?:\/\//, '').replace(/\/$/, '') : undefined)
+  const resolvedClientId = c.env.AUTH0_CLIENT_ID || c.env.NEXT_PUBLIC_AUTH0_CLIENT_ID
+
+  const missing: string[] = []
+  if (!resolvedDomain) missing.push('AUTH0_DOMAIN | AUTH0_ISSUER_BASE_URL')
+  if (!resolvedClientId) missing.push('AUTH0_CLIENT_ID | NEXT_PUBLIC_AUTH0_CLIENT_ID')
+
+  if (missing.length) {
+    return c.json({
+      error: 'Auth0 is not configured',
+      missing,
+      hint: 'Set these environment variables on the Worker (Wrangler vars/secrets)'
+    }, 500)
+  }
+
+  const redirectUri = c.env.AUTH0_REDIRECT_URI || 'https://pharmx-api.kasimhussain333.workers.dev/api/v1/auth/callback'
+  const authUrl = new URL(`https://${resolvedDomain}/authorize`)
   authUrl.searchParams.set('response_type', 'code')
-  authUrl.searchParams.set('client_id', c.env.AUTH0_CLIENT_ID)
-  authUrl.searchParams.set('redirect_uri', c.env.AUTH0_REDIRECT_URI || 'https://pharmx-api.kasimhussain333.workers.dev/api/v1/auth/callback')
+  authUrl.searchParams.set('client_id', resolvedClientId as string)
+  authUrl.searchParams.set('redirect_uri', redirectUri)
   authUrl.searchParams.set('scope', 'openid profile email')
   authUrl.searchParams.set('connection', 'google-oauth2') // Force Google OAuth
   authUrl.searchParams.set('state', crypto.randomUUID())
@@ -27,16 +45,29 @@ authRoutes.get('/callback', async (c) => {
   }
   
   try {
+    const issuer = c.env.AUTH0_ISSUER_BASE_URL || c.env.AUTH0_BASE_URL || ''
+    const resolvedDomain = c.env.AUTH0_DOMAIN || (issuer ? issuer.replace(/^https?:\/\//, '').replace(/\/$/, '') : undefined)
+    const resolvedClientId = c.env.AUTH0_CLIENT_ID || c.env.NEXT_PUBLIC_AUTH0_CLIENT_ID
+
+    const missing: string[] = []
+    if (!resolvedDomain) missing.push('AUTH0_DOMAIN | AUTH0_ISSUER_BASE_URL')
+    if (!resolvedClientId) missing.push('AUTH0_CLIENT_ID | NEXT_PUBLIC_AUTH0_CLIENT_ID')
+    if (!c.env.AUTH0_CLIENT_SECRET) missing.push('AUTH0_CLIENT_SECRET')
+
+    if (missing.length) {
+      return c.json({ error: 'Auth0 is not configured', missing }, 500)
+    }
+
     // Exchange code for tokens
-    const tokenResponse = await fetch(`https://${c.env.AUTH0_DOMAIN}/oauth/token`, {
+    const tokenResponse = await fetch(`https://${resolvedDomain}/oauth/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         grant_type: 'authorization_code',
-        client_id: c.env.AUTH0_CLIENT_ID,
+        client_id: resolvedClientId,
         client_secret: c.env.AUTH0_CLIENT_SECRET,
         code,
-        redirect_uri: c.env.AUTH0_REDIRECT_URI,
+        redirect_uri: c.env.AUTH0_REDIRECT_URI || 'https://pharmx-api.kasimhussain333.workers.dev/api/v1/auth/callback',
       }),
     })
     
@@ -47,7 +78,7 @@ authRoutes.get('/callback', async (c) => {
     }
     
     // Get user info
-    const userResponse = await fetch(`https://${c.env.AUTH0_DOMAIN}/userinfo`, {
+    const userResponse = await fetch(`https://${resolvedDomain}/userinfo`, {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     })
     
