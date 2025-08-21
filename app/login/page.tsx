@@ -2,6 +2,12 @@
 
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
+import dynamic from "next/dynamic"
+
+const Silk = dynamic(() => import('@/components/ui/silk'), {
+  ssr: false,
+  loading: () => <div className="w-full h-screen bg-black" />
+})
 
 export default function LoginPage() {
   const [mounted, setMounted] = useState(false)
@@ -22,18 +28,15 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
-      {/* Animated Gradient Background */}
+      {/* Silk Shader Background */}
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-pink-500 to-blue-500 opacity-80 animate-gradient-xy"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 via-purple-500 to-pink-500 opacity-50 animate-gradient-xy animation-delay-2000"></div>
-        <div className="absolute inset-0 bg-gradient-to-bl from-pink-600 via-blue-500 to-purple-500 opacity-30 animate-gradient-xy animation-delay-4000"></div>
-      </div>
-
-      {/* Floating Elements Animation */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-        <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-        <div className="absolute bottom-1/4 left-1/3 w-64 h-64 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+        <Silk
+          speed={3}
+          scale={8}
+          color="#9333ea"
+          noiseIntensity={0.8}
+          rotation={0.3}
+        />
       </div>
 
       {/* Content Container */}
