@@ -1,0 +1,23 @@
+{
+  "name": "pharmx-worker-api",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker API for PharmX Social",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20250821.0",
+    "drizzle-orm": "^0.44.4",
+    "hono": "^3.12.0",
+    "jose": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "drizzle-kit": "^0.31.4",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.110.0"
+  }
+}
