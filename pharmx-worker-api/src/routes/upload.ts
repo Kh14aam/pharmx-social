@@ -49,9 +49,9 @@ upload.post('/avatar', verifyAuth, async (c) => {
       
       try {
         const createResult = await c.env.DB.prepare(
-          `INSERT INTO users (id, email, created_at, updated_at)
-           VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-        ).bind(userId, emailToUse).run()
+          `INSERT INTO users (id, auth0_id, email, created_at, updated_at)
+           VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+        ).bind(userId, userId, emailToUse).run()
         
         console.log(`[Upload] User creation result:`, createResult)
         

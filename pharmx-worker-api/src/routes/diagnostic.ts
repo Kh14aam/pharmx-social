@@ -133,12 +133,13 @@ diagnosticRoutes.post('/test-create', verifyAuth, async (c) => {
       })
     } else {
       console.log('[Diagnostic] User does not exist, will create')
-      // Create new
+      // Create new - include auth0_id
       const result = await c.env.DB.prepare(
-        `INSERT INTO users (id, email, name, gender, date_of_birth, bio, location, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+        `INSERT INTO users (id, auth0_id, email, name, gender, date_of_birth, bio, location, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
       ).bind(
         userId,
+        userId, // auth0_id is same as id for Auth0 users
         userEmail,
         testData.name,
         testData.gender,

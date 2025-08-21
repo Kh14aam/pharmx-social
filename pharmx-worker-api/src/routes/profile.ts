@@ -129,12 +129,12 @@ profileRoutes.post('/', verifyAuth, async (c) => {
       console.log(`[Profile] User does not exist, creating new profile...`)
       console.log(`[Profile] Insert params - id: ${userId}, email: ${userEmail}, name: ${name}, gender: ${gender}, dob: ${dob}, bio: ${bio}, location: ${location}, avatarUrl: ${avatarUrl}, imageKey: ${imageKey}`)
       
-      // Create new user
+      // Create new user - include auth0_id which is same as id for Auth0 users
       try {
         const result = await c.env.DB.prepare(
-          `INSERT INTO users (id, email, name, gender, date_of_birth, bio, location, avatar_url, image_key, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-        ).bind(userId, userEmail, name, gender, dob, bio, location, avatarUrl, imageKey).run()
+          `INSERT INTO users (id, auth0_id, email, name, gender, date_of_birth, bio, location, avatar_url, image_key, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+        ).bind(userId, userId, userEmail, name, gender, dob, bio, location, avatarUrl, imageKey).run()
         
         console.log(`[Profile] Insert result:`, result)
         
