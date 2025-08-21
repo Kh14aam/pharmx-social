@@ -1,19 +1,18 @@
 "use client"
 
-import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-// Avatar components removed - using div with background image instead
-import { User, Info } from "lucide-react"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { useUser } from '@/components/providers/session-provider'
+import { Info, User } from "lucide-react"
+import { apiClient } from '@/lib/api-client'
 
 const profileSchema = z.object({
   name: z.string().min(2).max(40),
@@ -34,7 +33,6 @@ type ProfileFormData = z.infer<typeof profileSchema>
 export default function OnboardingPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { user } = useUser()
   const [avatarPreview, setAvatarPreview] = useState<string>("")
   const [uploading, setUploading] = useState(false)
   const [dobDay, setDobDay] = useState("")
@@ -74,27 +72,10 @@ export default function OnboardingPage() {
     reader.readAsDataURL(file)
 
     setUploading(true)
-    const formData = new FormData()
-    formData.append("file", file)
 
     try {
       // Upload to Cloudflare R2 via Worker API
-      const response = await fetch("https://pharmx-api.kasimhussain333.workers.dev/api/v1/upload/avatar", {
-        method: "POST",
-        body: formData,
-        headers: {
-          // Add authorization header if token exists
-          ...(localStorage.getItem('pharmx_token') && {
-            'Authorization': `Bearer ${localStorage.getItem('pharmx_token')}`,
-          }),
-        },
-      })
-      
-      if (!response.ok) {
-        throw new Error('Upload failed')
-      }
-      
-      const result = await response.json()
+      const result = await apiClient.profile.uploadAvatar(file)
       setValue("avatarUrl", result.url) // Store the server URL
       
       toast({
@@ -125,30 +106,7 @@ export default function OnboardingPage() {
       }
       
       // Call Worker API with authentication
-      const token = localStorage.getItem('pharmx_token')
-      if (!token) {
-        toast({
-          title: "Authentication required",
-          description: "Please sign in again",
-          variant: "destructive",
-        })
-        router.push('/login')
-        return
-      }
-      
-      const response = await fetch("https://pharmx-api.kasimhussain333.workers.dev/api/v1/profile", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(profileData),
-      })
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(error.error || "Failed to create profile")
-      }
+      await apiClient.profile.create(profileData)
 
       toast({
         title: "Welcome to PharmX Social!",
@@ -181,11 +139,11 @@ export default function OnboardingPage() {
             {/* Avatar Upload - Matching Users Tab Size */}
             <div className="flex flex-col items-center space-y-3">
               <div className="relative w-48 h-64 rounded-lg overflow-hidden border-4 border-gray-200">
-                {avatarPreview || user?.picture ? (
+                {avatarPreview ? (
                   <div 
                     className="absolute inset-0 bg-cover bg-center"
                     style={{ 
-                      backgroundImage: `url(${avatarPreview || user?.picture || ''})`,
+                      backgroundImage: `url(${avatarPreview})`,
                     }}
                   />
                 ) : (
@@ -224,7 +182,6 @@ export default function OnboardingPage() {
                 placeholder="Your display name"
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 {...register("name")}
-                defaultValue={user?.name || ""}
               />
               {errors.name && (
                 <p className="text-sm text-red-500">{errors.name.message}</p>

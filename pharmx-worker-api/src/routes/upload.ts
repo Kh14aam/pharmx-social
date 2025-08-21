@@ -12,7 +12,8 @@ upload.post('/avatar', verifyAuth, async (c) => {
     
     // Parse the multipart form data
     const formData = await c.req.formData()
-    const file = formData.get('file') as File
+    // Try both field names for compatibility
+    const file = (formData.get('file') || formData.get('avatar')) as File
     
     if (!file) {
       return c.json({ error: 'No file provided' }, 400)

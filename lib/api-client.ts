@@ -36,8 +36,12 @@ export class ApiClient {
   // Make authenticated request
   private async request(endpoint: string, options: RequestInit = {}) {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       ...(options.headers as Record<string, string> || {}),
+    }
+
+    // Only set Content-Type if not already set and body is not FormData
+    if (!headers['Content-Type'] && !(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json'
     }
 
     if (this.token) {
@@ -85,13 +89,16 @@ export class ApiClient {
     }),
     uploadAvatar: async (file: File) => {
       const formData = new FormData()
-      formData.append('avatar', file)
-      return this.request('/api/v1/profile/avatar', {
+      formData.append('file', file)
+      return this.request('/api/v1/upload/avatar', {
         method: 'POST',
         body: formData,
-        headers: {}, // Let browser set content-type for FormData
       })
     },
+    create: (data: Record<string, unknown>) => this.request('/api/v1/profile', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   }
 
   // Users endpoints
