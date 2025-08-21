@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Output configuration for better Cloudflare compatibility
-  output: 'standalone',
   
   // Disable image optimization (Cloudflare handles this)
   images: {
