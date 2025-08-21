@@ -2,6 +2,15 @@ name = "pharmx-api"
 main = "src/index.ts"
 compatibility_date = "2024-08-21"
 
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+AUTH0_DOMAIN = "dev-cm857sxeiz2kxcuo.uk.auth0.com"
+AUTH0_CLIENT_ID = "bEyCzCji6oheSXnStmS8ay95gtWnObj6"
+AUTH0_ISSUER_BASE_URL = "https://dev-cm857sxeiz2kxcuo.uk.auth0.com"
+AUTH0_REDIRECT_URI = "https://pharmx-api.kasimhussain333.workers.dev/api/v1/auth/callback"
+FRONTEND_URL = "https://chat.pharmx.co.uk"
+
 # Worker configuration
 [env.production]
 vars = { ENVIRONMENT = "production" }
