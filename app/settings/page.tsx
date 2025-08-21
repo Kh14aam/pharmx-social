@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -20,10 +20,12 @@ import {
   LogOut,
   Volume2,
   Palette,
-  Camera
+  Camera,
+  Loader2
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { apiClient } from "@/lib/api-client"
 
 const settingsItems = [
   {
@@ -84,18 +86,53 @@ const settingsItems = [
   }
 ]
 
+interface UserProfile {
+  name: string
+  email: string
+  avatar: string | null
+  isPremium: boolean
+}
+
 export default function SettingsPage() {
   const router = useRouter()
   const [darkMode, setDarkMode] = useState(false)
   const [notifications, setNotifications] = useState(true)
   const [soundEffects, setSoundEffects] = useState(true)
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock user data
-  const user = {
-    name: "Cooper Botosh",
-    email: "cooper@example.com",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
-    isPremium: false
+  useEffect(() => {
+    fetchUserProfile()
+  }, [])
+
+  const fetchUserProfile = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const data = await apiClient.profile.get()
+      
+      // Transform the API response to match our UserProfile interface
+      setUser({
+        name: data.username || data.name || 'User',
+        email: data.email || 'No email provided',
+        avatar: data.avatar_url || data.profile_picture_url || null,
+        isPremium: data.is_premium || false
+      })
+    } catch (err) {
+      console.error('Error fetching profile:', err)
+      setError('Failed to load profile data')
+      // Set a fallback user for development
+      setUser({
+        name: 'User',
+        email: 'user@example.com',
+        avatar: null,
+        isPremium: false
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSignOut = () => {
@@ -127,58 +164,86 @@ export default function SettingsPage() {
       <div className="max-w-2xl mx-auto">
         {/* Profile Section */}
         <div className="px-4 py-6">
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={user.avatar} />
-                <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-              </Avatar>
-              <button 
-                onClick={handleProfileEdit}
-                className="absolute bottom-0 right-0 p-1.5 bg-primary rounded-full text-primary-foreground"
+          {loading ? (
+            // Loading state
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            // Error state
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground mb-4">{error}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchUserProfile}
               >
-                <Camera className="h-3.5 w-3.5" />
-              </button>
+                Try Again
+              </Button>
             </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-bold">{user.name}</h2>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-            </div>
-            <Button 
-              variant="outline" 
-              size="icon"
-              className="rounded-xl"
-              onClick={() => router.push("/app/users")}
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <rect x="3" y="3" width="7" height="7" strokeWidth="1.5" />
-                <rect x="14" y="3" width="7" height="7" strokeWidth="1.5" />
-                <rect x="3" y="14" width="7" height="7" strokeWidth="1.5" />
-                <rect x="14" y="14" width="7" height="7" strokeWidth="1.5" />
-              </svg>
-            </Button>
-          </div>
-
-          {/* Premium Badge */}
-          {!user.isPremium && (
-            <Card 
-              className="mt-4 p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-200 dark:border-purple-800 cursor-pointer"
-              onClick={handleUpgrade}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full">
-                    <CreditCard className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm">Upgrade to Premium</p>
-                    <p className="text-xs text-muted-foreground">Unlock all features</p>
-                  </div>
+          ) : user ? (
+            // User data loaded
+            <>
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage src={user.avatar || undefined} />
+                    <AvatarFallback>
+                      {user.name
+                        .split(' ')
+                        .map(n => n[0])
+                        .join('')
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <button 
+                    onClick={handleProfileEdit}
+                    className="absolute bottom-0 right-0 p-1.5 bg-primary rounded-full text-primary-foreground"
+                  >
+                    <Camera className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold">{user.name}</h2>
+                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  className="rounded-xl"
+                  onClick={() => router.push("/app/users")}
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <rect x="3" y="3" width="7" height="7" strokeWidth="1.5" />
+                    <rect x="14" y="3" width="7" height="7" strokeWidth="1.5" />
+                    <rect x="3" y="14" width="7" height="7" strokeWidth="1.5" />
+                    <rect x="14" y="14" width="7" height="7" strokeWidth="1.5" />
+                  </svg>
+                </Button>
               </div>
-            </Card>
-          )}
+
+              {/* Premium Badge */}
+              {!user.isPremium && (
+                <Card 
+                  className="mt-4 p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-200 dark:border-purple-800 cursor-pointer"
+                  onClick={handleUpgrade}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full">
+                        <CreditCard className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">Upgrade to Premium</p>
+                        <p className="text-xs text-muted-foreground">Unlock all features</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                </Card>
+              )}
+            </>
+          ) : null}
         </div>
 
         {/* Settings List */}
