@@ -1,216 +1,294 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Phone, PhoneOff, Mic, MicOff, Loader2 } from "lucide-react"
+import { Phone, PhoneOff, Mic, MicOff, Loader2, Heart, X, Clock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { SignalingClient } from "@/lib/voice/signaling"
+import { useRouter } from "next/navigation"
 
-type VoiceState = "idle" | "searching" | "matched" | "in_call" | "ended"
-
-const searchMessages = [
-  "Finding someone friendly…",
-  "Warming up the mic…",
-  "Just a moment…",
-  "Looking for a voice match…",
-  "Connecting you soon…",
-]
+type VoiceState = "idle" | "searching" | "connecting" | "in_call" | "deciding" | "waiting_decision"
 
 export default function VoicePage() {
   const { toast } = useToast()
+  const router = useRouter()
   const [state, setState] = useState<VoiceState>("idle")
   const [isMuted, setIsMuted] = useState(false)
-  const [searchMessage, setSearchMessage] = useState(searchMessages[0])
-  const [estimatedWait, setEstimatedWait] = useState<number | null>(null)
-  const [peerName, setPeerName] = useState<string>("")
+  const [remainingSeconds, setRemainingSeconds] = useState(1200) // 20 minutes
+  const [, setCallId] = useState<string | null>(null)
+  const [decision, setDecision] = useState<"stay" | "skip" | null>(null)
   
-  const wsRef = useRef<WebSocket | null>(null)
+  const signalingRef = useRef<SignalingClient | null>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
-  const remoteStreamRef = useRef<MediaStream | null>(null)
-  const audioRef = useRef<HTMLAudioElement>(null)
+  const remoteAudioRef = useRef<HTMLAudioElement>(null)
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  useEffect(() => {
-    if (state === "searching") {
-      const interval = setInterval(() => {
-        setSearchMessage(prev => {
-          const currentIndex = searchMessages.indexOf(prev)
-          return searchMessages[(currentIndex + 1) % searchMessages.length]
-        })
-      }, 3000)
-      return () => clearInterval(interval)
-    }
-  }, [state])
-
-  const startSearch = async () => {
-    try {
-      // Request microphone permission
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      localStreamRef.current = stream
-
-      setState("searching")
-      
-      // Connect to matchmaking WebSocket
-      const wsUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'
-      const ws = new WebSocket(`${wsUrl.replace('https://', 'wss://').replace('http://', 'ws://')}/match`)
-      wsRef.current = ws
-
-      ws.onopen = () => {
-        ws.send(JSON.stringify({ type: "join", userId: "current-user-id" }))
-        
-        // Send heartbeat every 10 seconds
-        const heartbeat = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "heartbeat" }))
-          } else {
-            clearInterval(heartbeat)
-          }
-        }, 10000)
-      }
-
-      ws.onmessage = async (event) => {
-        const data = JSON.parse(event.data)
-        
-        switch (data.type) {
-          case "queued":
-            setEstimatedWait(data.etaSeconds)
-            break
-            
-          case "match":
-            setState("matched")
-            ws.close()
-            await connectToRoom(data.roomCode)
-            break
-            
-          case "queueUpdate":
-            setEstimatedWait(data.etaSeconds)
-            break
-            
-          case "cancelled":
-            setState("idle")
-            break
-        }
-      }
-
-      ws.onerror = () => {
-        toast({
-          title: "Connection error",
-          description: "Failed to connect to matchmaking service",
-          variant: "destructive",
-        })
-        setState("idle")
-      }
-    } catch {
-      toast({
-        title: "Microphone access denied",
-        description: "Please allow microphone access to use voice chat",
-        variant: "destructive",
-      })
-      setState("idle")
-    }
+  // Format time as MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const connectToRoom = async (roomCode: string) => {
-    // Get ICE servers from API
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'
-    const turnResponse = await fetch(`${apiUrl}/api/v1/turn-credentials`)
-    const { iceServers } = await turnResponse.json()
-    
-    // Initialize WebRTC connection
-    const pc = new RTCPeerConnection({ iceServers })
-    pcRef.current = pc
-
-    // Add local stream tracks
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => {
-        pc.addTrack(track, localStreamRef.current!)
-      })
+  // Cleanup function
+  const cleanup = useCallback(() => {
+    // Stop countdown
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current)
+      countdownIntervalRef.current = null
     }
 
-    // Handle remote stream
-    pc.ontrack = (event) => {
-      remoteStreamRef.current = event.streams[0]
-      if (audioRef.current) {
-        audioRef.current.srcObject = event.streams[0]
-      }
-      setState("in_call")
-      setPeerName("Anonymous") // In real app, get from server
-    }
-
-    // Connect to signaling WebSocket
-    const wsUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'
-    const signalingWs = new WebSocket(`${wsUrl.replace('https://', 'wss://').replace('http://', 'ws://')}/room/${roomCode}`)
-    
-    signalingWs.onopen = async () => {
-      // Create and send offer
-      const offer = await pc.createOffer()
-      await pc.setLocalDescription(offer)
-      signalingWs.send(JSON.stringify({ type: "offer", offer }))
-    }
-
-    signalingWs.onmessage = async (event) => {
-      const data = JSON.parse(event.data)
-      
-      switch (data.type) {
-        case "offer":
-          await pc.setRemoteDescription(data.offer)
-          const answer = await pc.createAnswer()
-          await pc.setLocalDescription(answer)
-          signalingWs.send(JSON.stringify({ type: "answer", answer }))
-          break
-          
-        case "answer":
-          await pc.setRemoteDescription(data.answer)
-          break
-          
-        case "ice-candidate":
-          await pc.addIceCandidate(data.candidate)
-          break
-      }
-    }
-
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        signalingWs.send(JSON.stringify({
-          type: "ice-candidate",
-          candidate: event.candidate,
-        }))
-      }
-    }
-  }
-
-  const cancelSearch = () => {
-    if (wsRef.current) {
-      wsRef.current.send(JSON.stringify({ type: "cancel" }))
-      wsRef.current.close()
-    }
-    setState("idle")
-  }
-
-  const endCall = () => {
-    // Clean up WebRTC connection
+    // Close WebRTC connection
     if (pcRef.current) {
       pcRef.current.close()
       pcRef.current = null
     }
-    
+
     // Stop local stream
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop())
       localStreamRef.current = null
     }
-    
-    // Close WebSocket
-    if (wsRef.current) {
-      wsRef.current.close()
-      wsRef.current = null
+
+    // Disconnect signaling
+    if (signalingRef.current) {
+      signalingRef.current.disconnect()
+      signalingRef.current = null
     }
-    
-    setState("idle")
-    setPeerName("")
+
+    // Reset state
+    setIsMuted(false)
+    setRemainingSeconds(1200)
+    setCallId(null)
+    setDecision(null)
+  }, [])
+
+  // Start finding a voice
+  const startFindingVoice = async () => {
+    try {
+      // Request microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { 
+          echoCancellation: true, 
+          noiseSuppression: true, 
+          autoGainControl: false 
+        } 
+      })
+      localStreamRef.current = stream
+
+      setState("searching")
+
+      // Get auth token (in production, get from Auth0)
+      const token = localStorage.getItem('pharmx_token') || 'user_test_token'
+      
+      // Connect to signaling server
+      const wsUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'
+      const signalingUrl = `${wsUrl.replace('https://', 'wss://').replace('http://', 'ws://')}/signal/ws`
+      
+      const signaling = new SignalingClient(signalingUrl, token)
+      signalingRef.current = signaling
+
+      // Set up signaling event handlers
+      signaling.on('onStateChange', (signalingState) => {
+        console.log('[Voice] Signaling state:', signalingState)
+      })
+
+      signaling.on('onPaired', async (role, id) => {
+        console.log(`[Voice] Paired as ${role} for call ${id}`)
+        setCallId(id)
+        setState("connecting")
+        await setupWebRTC(role)
+      })
+
+      signaling.on('onOffer', async (sdp) => {
+        if (pcRef.current) {
+          await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp))
+          const answer = await pcRef.current.createAnswer()
+          await pcRef.current.setLocalDescription(answer)
+          signaling.sendAnswer(answer)
+        }
+      })
+
+      signaling.on('onAnswer', async (sdp) => {
+        if (pcRef.current) {
+          await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp))
+        }
+      })
+
+      signaling.on('onIceCandidate', async (candidate) => {
+        if (pcRef.current) {
+          await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate))
+        }
+      })
+
+      signaling.on('onCallStarted', (seconds) => {
+        setState("in_call")
+        setRemainingSeconds(seconds)
+        
+        // Start countdown timer
+        countdownIntervalRef.current = setInterval(() => {
+          setRemainingSeconds(prev => {
+            if (prev <= 1) {
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
+      })
+
+      signaling.on('onTick', (seconds) => {
+        setRemainingSeconds(seconds)
+      })
+
+      signaling.on('onCallEnded', (reason) => {
+        console.log(`[Voice] Call ended: ${reason}`)
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current)
+          countdownIntervalRef.current = null
+        }
+        setState("deciding")
+      })
+
+      signaling.on('onDecisionWaiting', () => {
+        setState("waiting_decision")
+      })
+
+      signaling.on('onDecisionResult', (result) => {
+        if (result === 'stayinchat') {
+          toast({
+            title: "Chat created",
+            description: "You can continue chatting in the Chats tab",
+          })
+          // Navigate to chats
+          router.push('/app/chats')
+        } else {
+          toast({
+            title: "Not added this time",
+            description: "You can try finding another voice",
+          })
+        }
+        cleanup()
+        setState("idle")
+      })
+
+      signaling.on('onError', (code, message) => {
+        console.error(`[Voice] Error ${code}: ${message}`)
+        toast({
+          title: "Connection error",
+          description: message,
+          variant: "destructive",
+        })
+        cleanup()
+        setState("idle")
+      })
+
+      // Connect to signaling server
+      signaling.connect()
+
+    } catch (error) {
+      console.error('[Voice] Error starting:', error)
+      toast({
+        title: "Microphone access denied",
+        description: "Please allow microphone access to use voice chat",
+        variant: "destructive",
+      })
+      cleanup()
+      setState("idle")
+    }
   }
 
+  // Set up WebRTC connection
+  const setupWebRTC = async (role: 'offerer' | 'answerer') => {
+    try {
+      // Get ICE servers
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'
+      const turnResponse = await fetch(`${apiUrl}/api/v1/turn-credentials`)
+      const { iceServers } = await turnResponse.json()
+
+      // Create peer connection
+      const pc = new RTCPeerConnection({ iceServers })
+      pcRef.current = pc
+
+      // Add local stream
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => {
+          pc.addTrack(track, localStreamRef.current!)
+        })
+      }
+
+      // Handle remote stream
+      pc.ontrack = (event) => {
+        if (remoteAudioRef.current) {
+          remoteAudioRef.current.srcObject = event.streams[0]
+        }
+      }
+
+      // Handle ICE candidates
+      pc.onicecandidate = (event) => {
+        if (event.candidate && signalingRef.current) {
+          signalingRef.current.sendIceCandidate(event.candidate)
+        }
+      }
+
+      // Handle connection state changes
+      pc.onconnectionstatechange = () => {
+        console.log('[Voice] Connection state:', pc.connectionState)
+        if (pc.connectionState === 'connected') {
+          // Send ready signal
+          signalingRef.current?.sendReady()
+        } else if (pc.connectionState === 'failed') {
+          toast({
+            title: "Connection failed",
+            description: "Couldn't connect. Trying someone new...",
+            variant: "destructive",
+          })
+          cleanup()
+          // Auto-retry
+          setTimeout(() => startFindingVoice(), 2000)
+        }
+      }
+
+      // Create offer if offerer
+      if (role === 'offerer') {
+        const offer = await pc.createOffer()
+        await pc.setLocalDescription(offer)
+        signalingRef.current?.sendOffer(offer)
+      }
+
+    } catch (error) {
+      console.error('[Voice] WebRTC setup error:', error)
+      toast({
+        title: "Connection error",
+        description: "Failed to establish voice connection",
+        variant: "destructive",
+      })
+      cleanup()
+      setState("idle")
+    }
+  }
+
+  // Cancel search
+  const cancelSearch = () => {
+    cleanup()
+    setState("idle")
+  }
+
+  // End call
+  const endCall = () => {
+    // This will trigger the decision phase
+    if (signalingRef.current?.getState() === 'in_call') {
+      // The server will handle ending the call and moving to decision phase
+      cleanup()
+      setState("deciding")
+    } else {
+      cleanup()
+      setState("idle")
+    }
+  }
+
+  // Toggle mute
   const toggleMute = () => {
     if (localStreamRef.current) {
       const audioTrack = localStreamRef.current.getAudioTracks()[0]
@@ -221,10 +299,18 @@ export default function VoicePage() {
     }
   }
 
+  // Handle decision
+  const handleDecision = (choice: 'stay' | 'skip') => {
+    setDecision(choice)
+    signalingRef.current?.sendDecision(choice)
+    setState("waiting_decision")
+  }
+
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-8rem)] px-4">
-      <audio ref={audioRef} autoPlay />
+      <audio ref={remoteAudioRef} autoPlay playsInline />
       
+      {/* Idle state - Find a Voice button */}
       {state === "idle" && (
         <Card className="w-full max-w-md p-8 text-center space-y-6">
           <div className="space-y-2">
@@ -237,7 +323,7 @@ export default function VoicePage() {
           <Button
             size="lg"
             className="w-full h-16 text-lg rounded-2xl"
-            onClick={startSearch}
+            onClick={startFindingVoice}
           >
             <Phone className="mr-2 h-5 w-5" />
             Find a Voice
@@ -245,6 +331,7 @@ export default function VoicePage() {
         </Card>
       )}
 
+      {/* Searching state */}
       {state === "searching" && (
         <Card className="w-full max-w-md p-8 text-center space-y-6">
           <div className="space-y-4">
@@ -256,12 +343,10 @@ export default function VoicePage() {
             </div>
             
             <div className="space-y-2">
-              <p className="text-lg font-medium animate-pulse">{searchMessage}</p>
-              {estimatedWait && (
-                <p className="text-sm text-muted-foreground">
-                  Estimated wait: {estimatedWait} seconds
-                </p>
-              )}
+              <p className="text-lg font-medium">Finding someone…</p>
+              <p className="text-sm text-muted-foreground">
+                This usually takes a few seconds
+              </p>
             </div>
           </div>
           
@@ -276,34 +361,41 @@ export default function VoicePage() {
         </Card>
       )}
 
-      {(state === "matched" || state === "in_call") && (
+      {/* Connecting state */}
+      {state === "connecting" && (
         <Card className="w-full max-w-md p-8 text-center space-y-6">
           <div className="space-y-4">
-            <Avatar className="w-32 h-32 mx-auto">
-              <AvatarFallback className="text-3xl">
-                {peerName?.[0] || "?"}
-              </AvatarFallback>
-            </Avatar>
-            
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">
-                {state === "matched" ? "Connecting to" : "Connected to"}
-              </p>
-              <p className="text-xl font-semibold">{peerName || "Finding match..."}</p>
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+            <p className="text-lg font-medium">Connecting…</p>
+          </div>
+        </Card>
+      )}
+
+      {/* In call state */}
+      {state === "in_call" && (
+        <Card className="w-full max-w-md p-8 text-center space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">You&apos;re connected</p>
+              <div className="flex items-center justify-center space-x-2">
+                <Clock className="h-5 w-5 text-primary" />
+                <p className="text-2xl font-bold font-mono">
+                  {formatTime(remainingSeconds)}
+                </p>
+                <span className="text-sm text-muted-foreground">remaining</span>
+              </div>
             </div>
             
-            {state === "in_call" && (
-              <div className="flex justify-center space-x-4">
-                <Button
-                  size="icon"
-                  variant={isMuted ? "destructive" : "secondary"}
-                  className="h-12 w-12 rounded-full"
-                  onClick={toggleMute}
-                >
-                  {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                </Button>
-              </div>
-            )}
+            <div className="flex justify-center space-x-4">
+              <Button
+                size="icon"
+                variant={isMuted ? "destructive" : "secondary"}
+                className="h-12 w-12 rounded-full"
+                onClick={toggleMute}
+              >
+                {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+              </Button>
+            </div>
           </div>
           
           <Button
@@ -313,8 +405,56 @@ export default function VoicePage() {
             onClick={endCall}
           >
             <PhoneOff className="mr-2 h-5 w-5" />
-            Hang Up
+            End Call
           </Button>
+        </Card>
+      )}
+
+      {/* Decision phase */}
+      {state === "deciding" && (
+        <Card className="w-full max-w-md p-8 text-center space-y-6">
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold">Choose what happens next</h3>
+            <p className="text-sm text-muted-foreground">
+              Would you like to stay in touch?
+            </p>
+          </div>
+          
+          <div className="space-y-3">
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={() => handleDecision('stay')}
+            >
+              <Heart className="mr-2 h-5 w-5" />
+              Stay in touch
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full"
+              onClick={() => handleDecision('skip')}
+            >
+              <X className="mr-2 h-5 w-5" />
+              Skip
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Waiting for other person's decision */}
+      {state === "waiting_decision" && (
+        <Card className="w-full max-w-md p-8 text-center space-y-6">
+          <div className="space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+            <div className="space-y-2">
+              <p className="text-lg font-medium">Waiting for their choice…</p>
+              <p className="text-sm text-muted-foreground">
+                You chose to {decision === &apos;stay&apos; ? &apos;stay in touch&apos; : &apos;skip&apos;}
+              </p>
+            </div>
+          </div>
         </Card>
       )}
     </div>

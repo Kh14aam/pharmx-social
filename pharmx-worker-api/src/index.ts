@@ -10,6 +10,7 @@ import diagnosticRoutes from './routes/diagnostic'
 // Export Durable Objects
 export { MatchmakingQueue } from './durable-objects/MatchmakingQueue'
 export { ChatRoom } from './durable-objects/ChatRoom'
+export { LobbyDO } from './durable-objects/LobbyDO'
 
 export interface Env {
   DB: D1Database
@@ -17,6 +18,7 @@ export interface Env {
   AVATARS: R2Bucket
   MATCHMAKING_QUEUE: DurableObjectNamespace
   CHAT_ROOMS: DurableObjectNamespace
+  LOBBY: DurableObjectNamespace
   AUTH0_DOMAIN?: string
   AUTH0_CLIENT_ID?: string
   AUTH0_CLIENT_SECRET?: string
@@ -113,6 +115,21 @@ app.get('/room/:roomCode', async (c) => {
   const id = c.env.CHAT_ROOMS.idFromName(roomCode)
   const room = c.env.CHAT_ROOMS.get(id)
   return room.fetch(c.req.raw)
+})
+
+// Voice call WebSocket endpoint
+app.get('/signal/ws', async (c) => {
+  const upgradeHeader = c.req.header('Upgrade')
+  if (!upgradeHeader || upgradeHeader !== 'websocket') {
+    return c.text('Expected Upgrade: websocket', 426)
+  }
+
+  // Get the global LobbyDO instance
+  const id = c.env.LOBBY.idFromName('global-lobby')
+  const lobby = c.env.LOBBY.get(id)
+  
+  // Forward the request to the Durable Object
+  return lobby.fetch(c.req.raw)
 })
 
 // Get TURN credentials endpoint

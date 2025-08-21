@@ -40,7 +40,15 @@ class_name = "MatchmakingQueue"
 name = "CHAT_ROOMS"
 class_name = "ChatRoom"
 
+[[durable_objects.bindings]]
+name = "LOBBY"
+class_name = "LobbyDO"
+
 # Migrations for Durable Objects (using SQLite for free plan)
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["MatchmakingQueue", "ChatRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["LobbyDO"]
