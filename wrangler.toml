@@ -1,3 +1,4 @@
 name = "pharmx-social"
 pages_build_output_dir = ".vercel/output/static"
-compatibility_date = "2025-08-21"
+compatibility_date = "2024-08-21"
+compatibility_flags = ["nodejs_compat"]
