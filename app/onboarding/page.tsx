@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -19,12 +18,15 @@ import { useUser } from '@/components/providers/session-provider'
 const profileSchema = z.object({
   name: z.string().min(2).max(40),
   gender: z.enum(["male", "female"]),
-  dob: z.string().refine((date) => {
-    const age = new Date().getFullYear() - new Date(date).getFullYear()
-    return age >= 18
+  dobDay: z.string().regex(/^(0?[1-9]|[12][0-9]|3[01])$/, "Invalid day"),
+  dobMonth: z.string().regex(/^(0?[1-9]|1[012])$/, "Invalid month"),
+  dobYear: z.string().regex(/^(19|20)\d{2}$/, "Invalid year").refine((year) => {
+    const currentYear = new Date().getFullYear()
+    const birthYear = parseInt(year)
+    return currentYear - birthYear >= 18
   }, "You must be at least 18 years old"),
   bio: z.string().max(160),
-  avatarUrl: z.string().url().optional(),
+  avatarUrl: z.string().optional(),
 })
 
 type ProfileFormData = z.infer<typeof profileSchema>
@@ -35,6 +37,9 @@ export default function OnboardingPage() {
   const { user } = useUser()
   const [avatarPreview, setAvatarPreview] = useState<string>("")
   const [uploading, setUploading] = useState(false)
+  const [dobDay, setDobDay] = useState("")
+  const [dobMonth, setDobMonth] = useState("")
+  const [dobYear, setDobYear] = useState("")
 
   const {
     register,
@@ -73,8 +78,9 @@ export default function OnboardingPage() {
     formData.append("file", file)
 
     try {
-      // TODO: Upload to Cloudflare R2 via Worker API
-      // For now, we'll use the local preview
+      // IMAGE STORAGE: Currently storing as base64 in browser memory only (preview)
+      // TODO: Implement actual upload to Cloudflare R2 storage
+      // Uncomment below when R2 bucket is configured:
       // const response = await fetch("https://api.pharmx.co.uk/api/v1/upload/avatar", {
       //   method: "POST",
       //   body: formData,
@@ -83,9 +89,9 @@ export default function OnboardingPage() {
       //   },
       // })
       
-      // Simulate upload for now
+      // For now: Simulating upload - image stays in browser memory as base64
       await new Promise(resolve => setTimeout(resolve, 1000))
-      setValue("avatarUrl", reader.result as string)
+      setValue("avatarUrl", reader.result as string) // Storing as base64 data URL
       
       toast({
         title: "Photo uploaded",
@@ -104,10 +110,20 @@ export default function OnboardingPage() {
 
   const onSubmit = async (data: ProfileFormData) => {
     try {
+      // Combine date parts into ISO date string
+      const dob = `${data.dobYear}-${data.dobMonth.padStart(2, '0')}-${data.dobDay.padStart(2, '0')}`
+      const profileData = {
+        ...data,
+        dob,
+        dobDay: undefined,
+        dobMonth: undefined,
+        dobYear: undefined,
+      }
+      
       const response = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(profileData),
       })
 
       if (!response.ok) throw new Error("Failed to create profile")
@@ -212,20 +228,78 @@ export default function OnboardingPage() {
 
             {/* Date of Birth */}
             <div className="space-y-2">
-              <Label htmlFor="dob" className="text-gray-700 font-medium flex items-center gap-2">
+              <Label className="text-gray-700 font-medium flex items-center gap-2">
                 <Calendar className="w-4 h-4" /> Date of Birth
               </Label>
-              <Input
-                id="dob"
-                type="date"
-                placeholder="mm/dd/yyyy"
-                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                {...register("dob")}
-                max={format(new Date(), "yyyy-MM-dd")}
-              />
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Label className="text-xs text-gray-500 mb-1 block">Day</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="DD"
+                    maxLength={2}
+                    className="w-full text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    {...register("dobDay")}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '')
+                      setDobDay(value)
+                      setValue("dobDay", value)
+                      if (value.length === 2) {
+                        const monthInput = document.querySelector('input[name="dobMonth"]') as HTMLInputElement
+                        monthInput?.focus()
+                      }
+                    }}
+                    value={dobDay}
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs text-gray-500 mb-1 block">Month</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="MM"
+                    maxLength={2}
+                    className="w-full text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    {...register("dobMonth")}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '')
+                      setDobMonth(value)
+                      setValue("dobMonth", value)
+                      if (value.length === 2) {
+                        const yearInput = document.querySelector('input[name="dobYear"]') as HTMLInputElement
+                        yearInput?.focus()
+                      }
+                    }}
+                    value={dobMonth}
+                  />
+                </div>
+                <div className="flex-[1.5]">
+                  <Label className="text-xs text-gray-500 mb-1 block">Year</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="YYYY"
+                    maxLength={4}
+                    className="w-full text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    {...register("dobYear")}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '')
+                      setDobYear(value)
+                      setValue("dobYear", value)
+                    }}
+                    value={dobYear}
+                  />
+                </div>
+              </div>
               <p className="text-xs text-gray-500">You must be 18 or older</p>
-              {errors.dob && (
-                <p className="text-sm text-red-500">{errors.dob.message}</p>
+              {(errors.dobDay || errors.dobMonth || errors.dobYear) && (
+                <p className="text-sm text-red-500">
+                  {errors.dobDay?.message || errors.dobMonth?.message || errors.dobYear?.message}
+                </p>
               )}
             </div>
 
