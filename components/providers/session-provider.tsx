@@ -28,25 +28,24 @@ export function Auth0Provider({
 }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const [error] = useState<Error | null>(null)
 
   useEffect(() => {
-    // Fetch user session from the API route
-    fetch('/api/auth/me')
-      .then(res => {
-        if (res.ok) {
-          return res.json()
-        }
-        return null
-      })
-      .then(data => {
-        setUser(data)
-        setIsLoading(false)
-      })
-      .catch(err => {
-        setError(err)
-        setIsLoading(false)
-      })
+    // In a production app, you would:
+    // 1. Check for stored auth tokens in localStorage/cookies
+    // 2. Validate them with your Worker API
+    // 3. Fetch user profile from Worker API
+    
+    // For now, check if user data is in localStorage (mock)
+    const storedUser = localStorage.getItem('pharmx_user')
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser))
+      } catch (e) {
+        console.error('Failed to parse user data', e)
+      }
+    }
+    setIsLoading(false)
   }, [])
 
   return (

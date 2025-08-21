@@ -14,9 +14,26 @@ export default function LoginPage() {
 
   const handleGoogleLogin = () => {
     setIsLoading(true)
-    // Auth0 handles the authentication flow
-    // The connection parameter tells Auth0 to use Google
-    window.location.href = '/api/auth/login?connection=google-oauth2&returnTo=/onboarding'
+    // Redirect directly to Auth0 for authentication
+    const baseUrl = 'https://chat.pharmx.co.uk'
+    const issuerBase = process.env.NEXT_PUBLIC_AUTH0_ISSUER_BASE_URL || ''
+    const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID || ''
+    
+    if (!issuerBase || !clientId) {
+      console.error('Auth0 configuration missing')
+      setIsLoading(false)
+      return
+    }
+    
+    const authUrl = new URL(`${issuerBase}/authorize`)
+    authUrl.searchParams.set('response_type', 'code')
+    authUrl.searchParams.set('client_id', clientId)
+    authUrl.searchParams.set('redirect_uri', `${baseUrl}/auth/callback`)
+    authUrl.searchParams.set('scope', 'openid profile email')
+    authUrl.searchParams.set('connection', 'google-oauth2')
+    authUrl.searchParams.set('state', Buffer.from(JSON.stringify({ returnTo: '/onboarding' })).toString('base64'))
+    
+    window.location.href = authUrl.toString()
   }
 
   if (!mounted) {
