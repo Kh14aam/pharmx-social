@@ -86,9 +86,12 @@ export class ApiClient {
           window.location.href = '/login'
         }
         
-        const error = new Error(errorMessage)
+        interface CustomError extends Error {
+          details?: string
+        }
+        const error = new Error(errorMessage) as CustomError
         if (errorDetails) {
-          (error as any).details = errorDetails
+          error.details = errorDetails
         }
         throw error
       }
