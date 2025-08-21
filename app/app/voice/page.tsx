@@ -52,7 +52,8 @@ export default function VoicePage() {
       setState("searching")
       
       // Connect to matchmaking WebSocket
-      const ws = new WebSocket(`${process.env.NEXT_PUBLIC_WORKER_URL}/match`)
+      const wsUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'
+      const ws = new WebSocket(`${wsUrl.replace('https://', 'wss://').replace('http://', 'ws://')}/match`)
       wsRef.current = ws
 
       ws.onopen = () => {
@@ -111,12 +112,13 @@ export default function VoicePage() {
   }
 
   const connectToRoom = async (roomCode: string) => {
+    // Get ICE servers from API
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'
+    const turnResponse = await fetch(`${apiUrl}/api/v1/turn-credentials`)
+    const { iceServers } = await turnResponse.json()
+    
     // Initialize WebRTC connection
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: ["stun:stun.cloudflare.com:3478"] },
-      ],
-    })
+    const pc = new RTCPeerConnection({ iceServers })
     pcRef.current = pc
 
     // Add local stream tracks
@@ -137,7 +139,8 @@ export default function VoicePage() {
     }
 
     // Connect to signaling WebSocket
-    const signalingWs = new WebSocket(`${process.env.NEXT_PUBLIC_WORKER_URL}/room/${roomCode}`)
+    const wsUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'
+    const signalingWs = new WebSocket(`${wsUrl.replace('https://', 'wss://').replace('http://', 'ws://')}/room/${roomCode}`)
     
     signalingWs.onopen = async () => {
       // Create and send offer

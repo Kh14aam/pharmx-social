@@ -17,8 +17,16 @@ database_id = "9050344e-9b99-4651-a0cc-a5eaeed7c39d"
 binding = "SESSIONS"
 id = "1140c2d4954340bd8bf15960f3b9df45"
 
-# Durable Objects for real-time features (optional, for future)
-# [[durable_objects.bindings]]
-# name = "ROOMS"
-# class_name = "ChatRoom"
-# script_name = "pharmx-api"
+# Durable Objects for real-time features
+[[durable_objects.bindings]]
+name = "MATCHMAKING_QUEUE"
+class_name = "MatchmakingQueue"
+
+[[durable_objects.bindings]]
+name = "CHAT_ROOMS"
+class_name = "ChatRoom"
+
+# Migrations for Durable Objects (using SQLite for free plan)
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MatchmakingQueue", "ChatRoom"]

@@ -5,16 +5,23 @@ import { profileRoutes } from './routes/profile'
 import { usersRoutes } from './routes/users'
 import { chatsRoutes } from './routes/chats'
 
-// Define the environment bindings
+// Export Durable Objects
+export { MatchmakingQueue } from './durable-objects/MatchmakingQueue'
+export { ChatRoom } from './durable-objects/ChatRoom'
+
 export interface Env {
   DB: D1Database
   SESSIONS: KVNamespace
+  MATCHMAKING_QUEUE: DurableObjectNamespace
+  CHAT_ROOMS: DurableObjectNamespace
   AUTH0_DOMAIN: string
   AUTH0_CLIENT_ID: string
   AUTH0_CLIENT_SECRET: string
-  AUTH0_REDIRECT_URI: string
   JWT_SECRET: string
   FRONTEND_URL: string
+  TURN_USERNAME?: string
+  TURN_CREDENTIAL?: string
+  ENVIRONMENT?: string
 }
 
 // Create the main Hono app
@@ -64,4 +71,41 @@ app.onError((err, c) => {
   return c.json({ error: 'Internal Server Error' }, 500)
 })
 
-export default app
+// WebSocket endpoints (handled separately from Hono)
+app.get('/match', async (c) => {
+  // Forward to MatchmakingQueue Durable Object
+  const id = c.env.MATCHMAKING_QUEUE.idFromName('global-queue')
+  const queue = c.env.MATCHMAKING_QUEUE.get(id)
+  return queue.fetch(c.req.raw)
+})
+
+app.get('/room/:roomCode', async (c) => {
+  // Forward to ChatRoom Durable Object
+  const roomCode = c.req.param('roomCode')
+  const id = c.env.CHAT_ROOMS.idFromName(roomCode)
+  const room = c.env.CHAT_ROOMS.get(id)
+  return room.fetch(c.req.raw)
+})
+
+// Get TURN credentials endpoint
+app.get('/api/v1/turn-credentials', (c) => {
+  const iceServers = [
+    { urls: ['stun:stun.cloudflare.com:3478'] },
+    { urls: ['stun:stun.l.google.com:19302'] },
+  ]
+
+  // Add TURN server if credentials are configured
+  if (c.env.TURN_USERNAME && c.env.TURN_CREDENTIAL) {
+    iceServers.push({
+      urls: ['turn:turn.cloudflare.com:3478?transport=udp'],
+      username: c.env.TURN_USERNAME,
+      credential: c.env.TURN_CREDENTIAL,
+    })
+  }
+
+  return c.json({ iceServers })
+})
+
+export default {
+  fetch: app.fetch,
+}

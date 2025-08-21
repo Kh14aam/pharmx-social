@@ -35,9 +35,9 @@ export class ApiClient {
 
   // Make authenticated request
   private async request(endpoint: string, options: RequestInit = {}) {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string> || {}),
     }
 
     if (this.token) {
@@ -79,7 +79,7 @@ export class ApiClient {
   // Profile endpoints
   profile = {
     get: () => this.request('/api/v1/profile'),
-    update: (data: any) => this.request('/api/v1/profile', {
+    update: (data: Record<string, unknown>) => this.request('/api/v1/profile', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -97,7 +97,7 @@ export class ApiClient {
   // Users endpoints
   users = {
     list: (params?: { limit?: number; offset?: number }) => {
-      const query = new URLSearchParams(params as any).toString()
+      const query = new URLSearchParams(params as Record<string, string>).toString()
       return this.request(`/api/v1/users${query ? `?${query}` : ''}`)
     },
     get: (id: string) => this.request(`/api/v1/users/${id}`),
@@ -112,7 +112,7 @@ export class ApiClient {
       body: JSON.stringify({ otherUserId }),
     }),
     getMessages: (chatId: string, params?: { limit?: number; offset?: number }) => {
-      const query = new URLSearchParams(params as any).toString()
+      const query = new URLSearchParams(params as Record<string, string>).toString()
       return this.request(`/api/v1/chats/${chatId}/messages${query ? `?${query}` : ''}`)
     },
     sendMessage: (chatId: string, content: string) => this.request(`/api/v1/chats/${chatId}/messages`, {
