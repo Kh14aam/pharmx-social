@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Figtree } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
-import { NextAuthProvider } from "@/components/providers/session-provider";
+import { Auth0Provider } from "@/components/providers/session-provider";
 import "./globals.css";
 
 const figtree = Figtree({
@@ -79,10 +79,10 @@ export default function RootLayout({
       <body
         className={`${figtree.variable} font-sans antialiased`}
       >
-        <NextAuthProvider>
+        <Auth0Provider>
           {children}
           <Toaster />
-        </NextAuthProvider>
+        </Auth0Provider>
       </body>
     </html>
   );

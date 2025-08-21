@@ -1,6 +1,3 @@
-import { authOptions } from "@/lib/auth-config"
-import NextAuth from "next-auth"
-
-const handler = NextAuth(authOptions)
-
-export { handler as GET, handler as POST }
+// This file is no longer needed as we're using Auth0
+// Auth0 handles the authentication routes automatically
+export {}

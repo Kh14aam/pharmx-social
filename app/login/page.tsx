@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import Image from "next/image"
-import { signIn } from "next-auth/react"
 
 export default function LoginPage() {
   const [mounted, setMounted] = useState(false)
@@ -13,14 +12,11 @@ export default function LoginPage() {
     setMounted(true)
   }, [])
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = () => {
     setIsLoading(true)
-    try {
-      await signIn('google', { callbackUrl: '/onboarding' })
-    } catch (error) {
-      console.error('Authentication error:', error)
-      setIsLoading(false)
-    }
+    // Auth0 handles the authentication flow
+    // The connection parameter tells Auth0 to use Google
+    window.location.href = '/api/auth/login?connection=google-oauth2&returnTo=/onboarding'
   }
 
   if (!mounted) {

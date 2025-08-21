@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { User, Calendar, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { useSession } from "next-auth/react"
+import { useUser } from '@auth0/nextjs-auth0/client'
 
 const profileSchema = z.object({
   name: z.string().min(2).max(40),
@@ -32,7 +32,7 @@ type ProfileFormData = z.infer<typeof profileSchema>
 export default function OnboardingPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { data: session } = useSession()
+  const { user, error, isLoading: isUserLoading } = useUser()
   const [avatarPreview, setAvatarPreview] = useState<string>("")
   const [uploading, setUploading] = useState(false)
 
@@ -130,8 +130,8 @@ export default function OnboardingPage() {
                 {/* Avatar Upload */}
                 <div className="flex flex-col items-center space-y-3">
                   <Avatar className="w-20 h-20 border-2 border-zinc-700">
-                    {avatarPreview || session?.user?.image ? (
-                      <AvatarImage src={avatarPreview || session?.user?.image || ""} />
+                    {avatarPreview || user?.picture ? (
+                      <AvatarImage src={avatarPreview || user?.picture || ""} />
                     ) : (
                       <AvatarFallback className="bg-zinc-800">
                         <User className="w-8 h-8 text-zinc-400" />
@@ -163,7 +163,7 @@ export default function OnboardingPage() {
                     placeholder="Your display name"
                     className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
                     {...register("name")}
-                    defaultValue={session?.user?.name || ""}
+                    defaultValue={user?.name || ""}
                   />
                   {errors.name && (
                     <p className="text-sm text-red-400">{errors.name.message}</p>
