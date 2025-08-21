@@ -51,37 +51,64 @@ export class ApiClient {
       headers['X-Session-ID'] = this.sessionId
     }
 
-    console.log(`[API] ${options.method || 'GET'} ${endpoint}`)
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-      credentials: 'include',
-    })
-
-    if (!response.ok) {
-      // Try to parse error response
-      let errorMessage = `Request failed with status ${response.status}`
-      try {
-        const errorData = await response.json()
-        errorMessage = errorData.error || errorData.message || errorMessage
-        console.error(`[API Error] ${endpoint}:`, errorData)
-      } catch {
-        // If response is not JSON, use status text
-        errorMessage = response.statusText || errorMessage
-      }
-
-      if (response.status === 401) {
-        this.clearAuth()
-        window.location.href = '/login'
-      }
-      
-      throw new Error(errorMessage)
+    const url = `${API_BASE_URL}${endpoint}`
+    console.log(`[API] ${options.method || 'GET'} ${url}`)
+    console.log('[API] Headers:', headers)
+    if (options.body instanceof FormData) {
+      console.log('[API] Sending FormData with keys:', Array.from(options.body.keys()))
     }
 
-    const data = await response.json()
-    console.log(`[API Response] ${endpoint}:`, data)
-    return data
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include',
+        mode: 'cors', // Explicitly set CORS mode
+      })
+
+      if (!response.ok) {
+        // Try to parse error response
+        let errorMessage = `Request failed with status ${response.status}`
+        let errorDetails = null
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorData.message || errorMessage
+          errorDetails = errorData.details
+          console.error(`[API Error] ${endpoint}:`, errorData)
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage
+        }
+
+        if (response.status === 401) {
+          console.log('[API] 401 Unauthorized - clearing auth and redirecting to login')
+          this.clearAuth()
+          window.location.href = '/login'
+        }
+        
+        const error = new Error(errorMessage)
+        if (errorDetails) {
+          (error as any).details = errorDetails
+        }
+        throw error
+      }
+
+      const data = await response.json()
+      console.log(`[API Response] ${endpoint}:`, data)
+      return data
+    } catch (error) {
+      // Handle network errors
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.error('[API] Network error - Failed to fetch. Possible causes:')
+        console.error('  1. CORS blocking the request')
+        console.error('  2. Network connectivity issues')
+        console.error('  3. API server is down')
+        console.error('  4. SSL/TLS certificate issues')
+        console.error(`  URL: ${url}`)
+        throw new Error('Network error: Unable to connect to the server. Please check your connection and try again.')
+      }
+      throw error
+    }
   }
 
   // Auth endpoints

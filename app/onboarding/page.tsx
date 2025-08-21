@@ -38,6 +38,7 @@ export default function OnboardingPage() {
   const [dobDay, setDobDay] = useState("")
   const [dobMonth, setDobMonth] = useState("")
   const [dobYear, setDobYear] = useState("")
+  const [debugInfo, setDebugInfo] = useState<string>("")
 
   const {
     register,

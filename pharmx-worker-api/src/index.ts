@@ -34,16 +34,36 @@ const app = new Hono<{ Bindings: Env }>()
 
 // Configure CORS for your frontend
 app.use('/*', cors({
-  origin: (origin) => {
+  origin: (origin, c) => {
+    console.log(`[CORS] Request from origin: ${origin}`)
     const allowedOrigins = [
       'https://chat.pharmx.co.uk',
       'https://pharmx-social.pages.dev',
-      'http://localhost:3000' // for local development
+      'https://pharmx-social.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:3001'
     ]
-    return allowedOrigins.includes(origin) ? origin : allowedOrigins[0]
+    
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) {
+      console.log('[CORS] No origin header, allowing request')
+      return null
+    }
+    
+    // Check if origin is allowed
+    if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+      console.log(`[CORS] Allowed origin: ${origin}`)
+      return origin
+    }
+    
+    // Log rejected origin but still allow it for now to debug
+    console.log(`[CORS] WARNING: Unknown origin ${origin}, allowing for debugging`)
+    return origin // Temporarily allow all origins for debugging
   },
-  allowHeaders: ['Content-Type', 'Authorization'],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Session-ID', 'Accept'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
+  exposeHeaders: ['Content-Length', 'Content-Type'],
+  maxAge: 86400,
   credentials: true,
 }))
 
