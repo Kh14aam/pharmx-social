@@ -7,4 +7,4 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "pharmx-social-db"
-database_id = "YOUR_DATABASE_ID" # You'll get this after creating the D1 database
+database_id = "9050344e-9b99-4651-a0cc-a5eaeed7c39d"
