@@ -23,8 +23,8 @@ export default function LoginPage() {
     
     // Redirect directly to Auth0 for authentication
     const baseUrl = 'https://chat.pharmx.co.uk'
-    const issuerBase = process.env.NEXT_PUBLIC_AUTH0_ISSUER_BASE_URL || ''
-    const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID || ''
+    const issuerBase = (process.env.NEXT_PUBLIC_AUTH0_ISSUER_BASE_URL || '').trim()
+    const clientId = (process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID || '').trim()
     
     if (!issuerBase || !clientId) {
       console.error('Auth0 configuration missing:', {
