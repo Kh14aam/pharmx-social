@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/auth"
-import { prisma } from "@/lib/db"
+import { auth0 } from "@/lib/auth0"
+import { drizzle } from 'drizzle-orm/d1'
+import { profiles, users } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { z } from "zod"
 
 export const runtime = 'edge'
