@@ -22,23 +22,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black">
-      {/* Neuron Network Background Image */}
-      <div className="absolute inset-0">
-        <Image
-          src="/neurons-bg.png"
-          alt="Neural network background"
-          fill
-          className="object-cover"
-          priority
-          quality={100}
-        />
+    <div className="min-h-screen bg-black flex flex-col">
+      {/* Neuron Network Image Section - Takes up most of the screen */}
+      <div className="relative flex-1 min-h-0">
+        <div className="absolute inset-0">
+          <Image
+            src="/neurons-bg.png"
+            alt="Neural network background"
+            fill
+            className="object-cover"
+            priority
+            quality={100}
+          />
+        </div>
       </div>
 
-      {/* Content Container - Simplified with just the button */}
-      <div className="relative z-10 flex flex-col items-center justify-end min-h-screen p-8 pb-20">
-        {/* Login Button */}
-        <div className="w-full max-w-sm">
+      {/* Black Background Section with Login Button */}
+      <div className="bg-black px-8 py-16">
+        <div className="max-w-sm mx-auto">
           <Button 
             onClick={handleGoogleLogin}
             className="w-full h-14 bg-white text-gray-800 hover:bg-gray-100 rounded-full font-medium text-lg shadow-xl hover:shadow-2xl transition-all hover:scale-105 flex items-center justify-center gap-3"
