@@ -9,7 +9,29 @@ diagnosticRoutes.get('/check', verifyAuth, async (c) => {
   const userId = c.get('userId')
   const userEmail = c.get('userEmail')
   
-  const diagnostics: any = {
+  interface DiagnosticResult {
+    timestamp: string
+    auth: {
+      userId: string | undefined
+      userEmail: string | undefined
+      hasUserId: boolean
+      hasUserEmail: boolean
+    }
+    database: {
+      connected: boolean
+      userExists: boolean
+      userData: unknown
+      error: string | null
+      tableSchema?: unknown
+    }
+    environment: {
+      hasDB: boolean
+      hasAvatars: boolean
+      hasSessions: boolean
+    }
+  }
+  
+  const diagnostics: DiagnosticResult = {
     timestamp: new Date().toISOString(),
     auth: {
       userId,

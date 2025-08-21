@@ -126,13 +126,19 @@ export default function OnboardingPage() {
     } catch (error) {
       console.error('[Onboarding] Profile creation error:', error)
       
+      // Define error with details interface
+      interface ErrorWithDetails extends Error {
+        details?: string
+      }
+      
       // Extract detailed error message
       let errorMessage = "Failed to create profile. Please try again."
       if (error instanceof Error) {
         errorMessage = error.message
         // Check if there are additional details
-        if ((error as any).details) {
-          errorMessage = `${error.message} - ${(error as any).details}`
+        const errorWithDetails = error as ErrorWithDetails
+        if (errorWithDetails.details) {
+          errorMessage = `${error.message} - ${errorWithDetails.details}`
         }
       }
       
@@ -145,7 +151,7 @@ export default function OnboardingPage() {
       // Also log the full error details to console
       console.error('[Onboarding] Full error details:', {
         message: error instanceof Error ? error.message : 'Unknown error',
-        details: (error as any).details,
+        details: error instanceof Error && 'details' in error ? (error as ErrorWithDetails).details : undefined,
         error
       })
     }
