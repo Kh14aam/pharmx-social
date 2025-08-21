@@ -15,11 +15,7 @@ export default function LoginPage() {
   const handleGoogleLogin = () => {
     setIsLoading(true)
     
-    // Debug: Log environment variables (remove in production)
-    console.log('Auth0 Config:', {
-      issuerBase: process.env.NEXT_PUBLIC_AUTH0_ISSUER_BASE_URL,
-      clientId: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID,
-    })
+    // Auth0 configuration from environment variables
     
     // Redirect directly to Auth0 for authentication
     const baseUrl = 'https://chat.pharmx.co.uk'
@@ -44,7 +40,7 @@ export default function LoginPage() {
     authUrl.searchParams.set('connection', 'google-oauth2')
     authUrl.searchParams.set('state', Buffer.from(JSON.stringify({ returnTo: '/onboarding' })).toString('base64'))
     
-    console.log('Redirecting to Auth0:', authUrl.toString())
+    // Redirect to Auth0 for authentication
     window.location.href = authUrl.toString()
   }
 
