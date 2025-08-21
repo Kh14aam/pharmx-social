@@ -5,8 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:cloudflare": "next-on-pages",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "pages:build": "npx @cloudflare/next-on-pages",
+    "pages:dev": "npx wrangler pages dev .vercel/output/static --compatibility-flags=nodejs_compat",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
@@ -49,6 +53,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.13.14",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
