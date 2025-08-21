@@ -376,7 +376,7 @@ export default function VoicePage() {
         <Card className="w-full max-w-md p-8 text-center space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">You&apos;re connected</p>
+              <p className="text-sm text-muted-foreground">{"You're connected"}</p>
               <div className="flex items-center justify-center space-x-2">
                 <Clock className="h-5 w-5 text-primary" />
                 <p className="text-2xl font-bold font-mono">
@@ -451,7 +451,7 @@ export default function VoicePage() {
             <div className="space-y-2">
               <p className="text-lg font-medium">Waiting for their choice…</p>
               <p className="text-sm text-muted-foreground">
-                You chose to {decision === &apos;stay&apos; ? &apos;stay in touch&apos; : &apos;skip&apos;}
+                You chose to {decision === 'stay' ? 'stay in touch' : 'skip'}
               </p>
             </div>
           </div>
