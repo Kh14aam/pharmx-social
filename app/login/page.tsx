@@ -26,7 +26,7 @@ export default function LoginPage() {
       {/* Neuron Network Background Image */}
       <div className="absolute inset-0">
         <Image
-          src="/neurons-bg.jpg"
+          src="/neurons-bg.png"
           alt="Neural network background"
           fill
           className="object-cover"
