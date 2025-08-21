@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
   
-  // Disable image optimization (Cloudflare handles this)
+  // Disable image optimization (required for static export)
   images: {
     unoptimized: true,
     remotePatterns: [
