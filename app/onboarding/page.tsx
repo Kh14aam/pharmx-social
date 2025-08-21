@@ -78,20 +78,24 @@ export default function OnboardingPage() {
     formData.append("file", file)
 
     try {
-      // IMAGE STORAGE: Currently storing as base64 in browser memory only (preview)
-      // TODO: Implement actual upload to Cloudflare R2 storage
-      // Uncomment below when R2 bucket is configured:
-      // const response = await fetch("https://api.pharmx.co.uk/api/v1/upload/avatar", {
-      //   method: "POST",
-      //   body: formData,
-      //   headers: {
-      //     'Authorization': `Bearer ${localStorage.getItem('pharmx_token')}`,
-      //   },
-      // })
+      // Upload to Cloudflare R2 via Worker API
+      const response = await fetch("https://pharmx-api.kasimhussain333.workers.dev/api/v1/upload/avatar", {
+        method: "POST",
+        body: formData,
+        headers: {
+          // Add authorization header if token exists
+          ...(localStorage.getItem('pharmx_token') && {
+            'Authorization': `Bearer ${localStorage.getItem('pharmx_token')}`,
+          }),
+        },
+      })
       
-      // For now: Simulating upload - image stays in browser memory as base64
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setValue("avatarUrl", reader.result as string) // Storing as base64 data URL
+      if (!response.ok) {
+        throw new Error('Upload failed')
+      }
+      
+      const result = await response.json()
+      setValue("avatarUrl", result.url) // Store the server URL
       
       toast({
         title: "Photo uploaded",
