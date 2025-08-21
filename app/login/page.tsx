@@ -2,12 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
-import dynamic from "next/dynamic"
-
-const Silk = dynamic(() => import('@/components/ui/silk'), {
-  ssr: false,
-  loading: () => <div className="w-full h-screen bg-black" />
-})
+import Image from "next/image"
 
 export default function LoginPage() {
   const [mounted, setMounted] = useState(false)
@@ -28,84 +23,21 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
-      {/* Silk Shader Background */}
+      {/* Neuron Network Background Image */}
       <div className="absolute inset-0">
-        <Silk
-          speed={3}
-          scale={8}
-          color="#9333ea"
-          noiseIntensity={0.8}
-          rotation={0.3}
+        <Image
+          src="/neurons-bg.jpg"
+          alt="Neural network background"
+          fill
+          className="object-cover"
+          priority
+          quality={100}
         />
       </div>
 
-      {/* Content Container */}
-      <div className="relative z-10 flex flex-col items-center justify-between min-h-screen p-8">
-        {/* Header */}
-        <div className="text-center pt-12">
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-2">
-            PharmX Social
-          </h1>
-          <p className="text-xl text-white/80">
-            Meet new people
-          </p>
-        </div>
-
-        {/* Center Content - Meeting People Illustration */}
-        <div className="flex-1 flex flex-col items-center justify-center max-w-md w-full">
-          <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 shadow-2xl">
-            {/* Animated Icons representing people connecting */}
-            <div className="relative w-64 h-64 mx-auto mb-8">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="relative w-full h-full">
-                  {/* Central hub */}
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center">
-                    <svg className="w-8 h-8 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                  
-                  {/* Orbiting people icons */}
-                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full shadow-lg animate-orbit flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                  
-                  <div className="absolute bottom-0 right-0 w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full shadow-lg animate-orbit-reverse flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                  
-                  <div className="absolute top-1/2 right-0 transform -translate-y-1/2 w-12 h-12 bg-gradient-to-br from-pink-400 to-purple-400 rounded-full shadow-lg animate-orbit-delayed flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                  
-                  <div className="absolute bottom-0 left-0 w-12 h-12 bg-gradient-to-br from-purple-400 to-blue-400 rounded-full shadow-lg animate-orbit flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-semibold text-white mb-2">
-                Connect with voices worldwide
-              </h2>
-              <p className="text-white/70">
-                Join conversations and make new friends
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Section - Login Button */}
+      {/* Content Container - Simplified with just the button */}
+      <div className="relative z-10 flex flex-col items-center justify-end min-h-screen p-8 pb-20">
+        {/* Login Button */}
         <div className="w-full max-w-sm">
           <Button 
             onClick={handleGoogleLogin}
@@ -125,90 +57,6 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes gradient-xy {
-          0%, 100% {
-            transform: translateX(0) translateY(0);
-          }
-          33% {
-            transform: translateX(30px) translateY(-30px);
-          }
-          66% {
-            transform: translateX(-20px) translateY(20px);
-          }
-        }
-        
-        @keyframes blob {
-          0% {
-            transform: translate(0px, 0px) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-          100% {
-            transform: translate(0px, 0px) scale(1);
-          }
-        }
-        
-        @keyframes orbit {
-          from {
-            transform: rotate(0deg) translateX(100px) rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg) translateX(100px) rotate(-360deg);
-          }
-        }
-        
-        @keyframes orbit-reverse {
-          from {
-            transform: rotate(0deg) translateX(100px) rotate(0deg);
-          }
-          to {
-            transform: rotate(-360deg) translateX(100px) rotate(360deg);
-          }
-        }
-        
-        @keyframes orbit-delayed {
-          from {
-            transform: rotate(120deg) translateX(100px) rotate(-120deg);
-          }
-          to {
-            transform: rotate(480deg) translateX(100px) rotate(-480deg);
-          }
-        }
-        
-        .animate-gradient-xy {
-          animation: gradient-xy 15s ease infinite;
-        }
-        
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        
-        .animate-orbit {
-          animation: orbit 20s linear infinite;
-        }
-        
-        .animate-orbit-reverse {
-          animation: orbit-reverse 25s linear infinite;
-        }
-        
-        .animate-orbit-delayed {
-          animation: orbit-delayed 30s linear infinite;
-        }
-        
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
     </div>
   )
 }
