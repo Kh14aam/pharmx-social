@@ -9,8 +9,9 @@ authRoutes.get('/login', (c) => {
   const authUrl = new URL(`https://${c.env.AUTH0_DOMAIN}/authorize`)
   authUrl.searchParams.set('response_type', 'code')
   authUrl.searchParams.set('client_id', c.env.AUTH0_CLIENT_ID)
-  authUrl.searchParams.set('redirect_uri', c.env.AUTH0_REDIRECT_URI)
+  authUrl.searchParams.set('redirect_uri', c.env.AUTH0_REDIRECT_URI || 'https://pharmx-api.kasimhussain333.workers.dev/api/v1/auth/callback')
   authUrl.searchParams.set('scope', 'openid profile email')
+  authUrl.searchParams.set('connection', 'google-oauth2') // Force Google OAuth
   authUrl.searchParams.set('state', crypto.randomUUID())
   
   return c.redirect(authUrl.toString())
@@ -78,7 +79,8 @@ authRoutes.get('/callback', async (c) => {
     })
     
     // Redirect to frontend with session token
-    const redirectUrl = new URL(c.env.FRONTEND_URL)
+    const frontendUrl = c.env.FRONTEND_URL || 'https://chat.pharmx.co.uk'
+    const redirectUrl = new URL(`${frontendUrl}/auth/callback`)
     redirectUrl.searchParams.set('token', jwt)
     redirectUrl.searchParams.set('session', sessionId)
     

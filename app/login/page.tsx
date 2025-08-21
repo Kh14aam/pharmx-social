@@ -15,33 +15,9 @@ export default function LoginPage() {
   const handleGoogleLogin = () => {
     setIsLoading(true)
     
-    // Auth0 configuration from environment variables
-    
-    // Redirect directly to Auth0 for authentication
-    const baseUrl = 'https://chat.pharmx.co.uk'
-    const issuerBase = (process.env.NEXT_PUBLIC_AUTH0_ISSUER_BASE_URL || '').trim()
-    const clientId = (process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID || '').trim()
-    
-    if (!issuerBase || !clientId) {
-      console.error('Auth0 configuration missing:', {
-        issuerBase: issuerBase || 'NOT SET',
-        clientId: clientId || 'NOT SET'
-      })
-      alert('Authentication is not configured. Please check Auth0 settings.')
-      setIsLoading(false)
-      return
-    }
-    
-    const authUrl = new URL(`${issuerBase}/authorize`)
-    authUrl.searchParams.set('response_type', 'code')
-    authUrl.searchParams.set('client_id', clientId)
-    authUrl.searchParams.set('redirect_uri', `${baseUrl}/auth/callback`)
-    authUrl.searchParams.set('scope', 'openid profile email')
-    authUrl.searchParams.set('connection', 'google-oauth2')
-    authUrl.searchParams.set('state', Buffer.from(JSON.stringify({ returnTo: '/onboarding' })).toString('base64'))
-    
-    // Redirect to Auth0 for authentication
-    window.location.href = authUrl.toString()
+    // Redirect to Worker API which handles Auth0 authentication
+    // The Worker will handle the Auth0 flow and redirect back with tokens
+    window.location.href = 'https://pharmx-api.kasimhussain333.workers.dev/api/v1/auth/login'
   }
 
   if (!mounted) {

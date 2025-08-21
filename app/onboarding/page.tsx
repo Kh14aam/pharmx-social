@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+// Avatar components removed - using div with background image instead
 import { User, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useUser } from '@/components/providers/session-provider'
@@ -117,31 +117,51 @@ export default function OnboardingPage() {
       // Combine date parts into ISO date string
       const dob = `${data.dobYear}-${data.dobMonth.padStart(2, '0')}-${data.dobDay.padStart(2, '0')}`
       const profileData = {
-        ...data,
+        name: data.name,
+        gender: data.gender,
         dob,
-        dobDay: undefined,
-        dobMonth: undefined,
-        dobYear: undefined,
+        bio: data.bio,
+        avatarUrl: data.avatarUrl,
       }
       
-      const response = await fetch("/api/profile", {
+      // Call Worker API with authentication
+      const token = localStorage.getItem('pharmx_token')
+      if (!token) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in again",
+          variant: "destructive",
+        })
+        router.push('/login')
+        return
+      }
+      
+      const response = await fetch("https://pharmx-api.kasimhussain333.workers.dev/api/v1/profile", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(profileData),
       })
 
-      if (!response.ok) throw new Error("Failed to create profile")
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(error.error || "Failed to create profile")
+      }
 
       toast({
-        title: "Welcome to PharmX Voice Social!",
+        title: "Welcome to PharmX Social!",
         description: "Your profile has been created",
       })
 
-      router.push("/app/voice")
-    } catch {
+      // Redirect to users page instead of voice
+      router.push("/app/users")
+    } catch (error) {
+      console.error('Profile creation error:', error)
       toast({
         title: "Error",
-        description: "Failed to create profile. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create profile. Please try again.",
         variant: "destructive",
       })
     }
@@ -158,17 +178,22 @@ export default function OnboardingPage() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Avatar Upload - Centered */}
+            {/* Avatar Upload - Matching Users Tab Size */}
             <div className="flex flex-col items-center space-y-3">
-              <Avatar className="w-24 h-24 border-4 border-gray-200">
+              <div className="relative w-48 h-64 rounded-lg overflow-hidden border-4 border-gray-200">
                 {avatarPreview || user?.picture ? (
-                  <AvatarImage src={avatarPreview || user?.picture || ""} />
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ 
+                      backgroundImage: `url(${avatarPreview || user?.picture || ''})`,
+                    }}
+                  />
                 ) : (
-                  <AvatarFallback className="bg-gray-100">
-                    <User className="w-10 h-10 text-gray-400" />
-                  </AvatarFallback>
+                  <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+                    <User className="w-16 h-16 text-gray-400" />
+                  </div>
                 )}
-              </Avatar>
+              </div>
               <div>
                 <Input
                   id="avatar"

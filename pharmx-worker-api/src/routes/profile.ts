@@ -25,6 +25,42 @@ profileRoutes.get('/', verifyAuth, async (c) => {
   }
 })
 
+// Create user profile (for onboarding)
+profileRoutes.post('/', verifyAuth, async (c) => {
+  const userId = c.get('userId')
+  const userEmail = c.get('userEmail')
+  const body = await c.req.json()
+  
+  const { name, gender, dob, bio, avatarUrl } = body
+  
+  try {
+    // Check if user already exists
+    const existing = await c.env.DB.prepare(
+      'SELECT id FROM users WHERE id = ?'
+    ).bind(userId).first()
+    
+    if (existing) {
+      // Update existing user
+      await c.env.DB.prepare(
+        `UPDATE users 
+         SET name = ?, gender = ?, date_of_birth = ?, bio = ?, avatar_url = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`
+      ).bind(name, gender, dob, bio, avatarUrl || null, userId).run()
+    } else {
+      // Create new user
+      await c.env.DB.prepare(
+        `INSERT INTO users (id, email, name, gender, date_of_birth, bio, avatar_url, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+      ).bind(userId, userEmail, name, gender, dob, bio, avatarUrl || null).run()
+    }
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Error creating/updating profile:', error)
+    return c.json({ error: 'Failed to create profile' }, 500)
+  }
+})
+
 // Update user profile
 profileRoutes.put('/', verifyAuth, async (c) => {
   const userId = c.get('userId')
