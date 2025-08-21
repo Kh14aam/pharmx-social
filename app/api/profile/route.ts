@@ -3,6 +3,8 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { z } from "zod"
 
+export const runtime = 'edge'
+
 const profileSchema = z.object({
   name: z.string().min(2).max(40),
   gender: z.enum(["male", "female"]),

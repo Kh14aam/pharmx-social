@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Figtree } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
@@ -14,13 +14,6 @@ export const metadata: Metadata = {
   title: "PharmX Voice Social - Meet new people. Be social.",
   description: "Connect with new people through voice calls and text chats",
   manifest: "/manifest.json",
-  themeColor: "#000000",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -36,6 +29,14 @@ export const metadata: Metadata = {
     siteName: "PharmX Voice Social",
     type: "website",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
