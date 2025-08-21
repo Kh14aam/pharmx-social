@@ -11,7 +11,7 @@ usersRoutes.get('/', verifyAuth, async (c) => {
   
   try {
     const result = await c.env.DB.prepare(
-      `SELECT id, name, email, avatar, bio, location, created_at 
+      `SELECT id, name, email, COALESCE(avatar_url, avatar) AS avatar, bio, location, created_at 
        FROM users 
        ORDER BY created_at DESC 
        LIMIT ? OFFSET ?`
@@ -35,7 +35,7 @@ usersRoutes.get('/:id', verifyAuth, async (c) => {
   
   try {
     const user = await c.env.DB.prepare(
-      'SELECT id, name, email, avatar, bio, location, created_at FROM users WHERE id = ?'
+      'SELECT id, name, email, COALESCE(avatar_url, avatar) AS avatar, bio, location, created_at FROM users WHERE id = ?'
     ).bind(userId).first()
     
     if (!user) {
@@ -59,7 +59,7 @@ usersRoutes.get('/search', verifyAuth, async (c) => {
   
   try {
     const result = await c.env.DB.prepare(
-      `SELECT id, name, email, avatar, bio, location 
+      `SELECT id, name, email, COALESCE(avatar_url, avatar) AS avatar, bio, location 
        FROM users 
        WHERE name LIKE ? OR email LIKE ? 
        LIMIT 10`
