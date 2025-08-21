@@ -38,7 +38,14 @@ export async function POST(req: NextRequest) {
     
     if (existingProfile) {
       // Update profile (but not gender if it's locked)
-      const updateData: any = {
+      const updateData: {
+        name: string
+        bio: string
+        dob: Date
+        avatarUrl?: string
+        gender?: "male" | "female"
+        genderLocked?: boolean
+      } = {
         name: data.name,
         bio: data.bio,
         dob: data.dob,
@@ -79,7 +86,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid data", details: error.errors },
+        { error: "Invalid data", details: error.issues },
         { status: 400 }
       )
     }
@@ -92,7 +99,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const session = await auth()
     

@@ -3,8 +3,7 @@
 import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { MessageSquare, Phone, Heart, X, MapPin, Briefcase, GraduationCap, Music, Camera, Coffee } from "lucide-react"
+import { MessageSquare, Phone, Heart, MapPin } from "lucide-react"
 
 // Mock data with single profile images
 const mockUsers = [

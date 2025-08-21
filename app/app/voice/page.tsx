@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Phone, PhoneOff, Mic, MicOff, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -100,7 +100,7 @@ export default function VoicePage() {
         })
         setState("idle")
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Microphone access denied",
         description: "Please allow microphone access to use voice chat",

@@ -4,7 +4,6 @@ import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { 
   Phone, Send, Check, CheckCheck, MessageSquare, 
@@ -408,7 +407,7 @@ export default function ChatsPage() {
             <div className="space-y-2">
               <h3 className="font-semibold text-lg">Your messages</h3>
               <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-                Send messages to people you've connected with on PharmX
+                Send messages to people you&apos;ve connected with on PharmX
               </p>
             </div>
           </div>

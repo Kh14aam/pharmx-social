@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { CalendarIcon, Upload } from "lucide-react"
+import { Upload } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 const profileSchema = z.object({
@@ -77,7 +77,7 @@ export default function OnboardingPage() {
       const { url } = await response.json()
       setAvatarPreview(url)
       setValue("avatarUrl", url)
-    } catch (error) {
+    } catch {
       toast({
         title: "Upload failed",
         description: "Please try again",
@@ -104,7 +104,7 @@ export default function OnboardingPage() {
       })
 
       router.push("/app/voice")
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to create profile. Please try again.",

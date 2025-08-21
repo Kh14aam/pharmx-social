@@ -17,12 +17,7 @@ import {
   Users,
   CreditCard,
   Moon,
-  Smartphone,
   LogOut,
-  Heart,
-  Settings,
-  Globe,
-  Lock,
   Volume2,
   Palette,
   Camera

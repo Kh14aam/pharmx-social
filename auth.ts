@@ -1,6 +1,6 @@
 import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
-import Apple from "next-auth/providers/apple"
+// import Apple from "next-auth/providers/apple"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/db"
 
@@ -11,14 +11,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       clientId: process.env.AUTH_GOOGLE_ID!,
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
     }),
-    Apple({
-      clientId: process.env.AUTH_APPLE_ID!,
-      clientSecret: {
-        teamId: process.env.AUTH_APPLE_TEAM_ID!,
-        privateKey: process.env.AUTH_APPLE_PRIVATE_KEY!,
-        keyId: process.env.AUTH_APPLE_KEY_ID!,
-      },
-    }),
+    // Apple provider commented out - needs proper configuration
+    // Apple({
+    //   clientId: process.env.AUTH_APPLE_ID!,
+    //   clientSecret: process.env.AUTH_APPLE_SECRET!,
+    // }),
   ],
   pages: {
     signIn: "/",
