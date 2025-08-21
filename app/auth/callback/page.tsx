@@ -1,23 +1,41 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { apiClient } from '@/lib/api-client'
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Handle the Auth0 callback
-    // In a real implementation, you would:
-    // 1. Extract the authorization code from the URL
-    // 2. Exchange it for tokens via your Worker API
-    // 3. Store the session
-    // 4. Redirect to the intended page
+    // Handle the Auth0 callback with JWT token from Worker
+    const token = searchParams.get('token')
+    const sessionId = searchParams.get('session')
     
-    // For now, we'll just redirect to onboarding
-    // This would typically be handled by your Worker API
-    router.push('/onboarding')
-  }, [router])
+    if (token && sessionId) {
+      // Store the authentication credentials
+      apiClient.setAuth(token, sessionId)
+      
+      // Check if user has completed onboarding
+      apiClient.profile.get()
+        .then(profile => {
+          // If profile exists, go to app, otherwise onboarding
+          if (profile && profile.name) {
+            router.push('/app/voice')
+          } else {
+            router.push('/onboarding')
+          }
+        })
+        .catch(() => {
+          // No profile yet, go to onboarding
+          router.push('/onboarding')
+        })
+    } else {
+      // No token, redirect to login
+      router.push('/login')
+    }
+  }, [router, searchParams])
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
@@ -26,5 +44,20 @@ export default function AuthCallbackPage() {
         <p className="text-white">Completing sign in...</p>
       </div>
     </div>
+  )
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AuthCallbackContent />
+    </Suspense>
   )
 }

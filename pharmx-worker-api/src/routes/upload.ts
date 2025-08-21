@@ -1,13 +1,14 @@
 import { Hono } from 'hono'
 import type { Env } from '../index'
+import { verifyAuth } from '../middleware/auth'
 
 const upload = new Hono<{ Bindings: Env }>()
 
-// Avatar upload endpoint
-upload.post('/avatar', async (c) => {
+// Avatar upload endpoint - requires authentication
+upload.post('/avatar', verifyAuth, async (c) => {
   try {
-    // Get user ID from JWT (you'll need to implement auth middleware)
-    const userId = c.get('userId') || 'test-user' // Replace with actual auth
+    // Get authenticated user ID from middleware
+    const userId = c.get('userId') as string
     
     // Parse the multipart form data
     const formData = await c.req.formData()

@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { User, Calendar, Info } from "lucide-react"
+import { User, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useUser } from '@/components/providers/session-provider'
 
@@ -191,8 +191,8 @@ export default function OnboardingPage() {
 
             {/* Name Input */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-gray-700 font-medium flex items-center gap-2">
-                <User className="w-4 h-4" /> Name
+              <Label htmlFor="name" className="text-gray-700 font-medium">
+                Name
               </Label>
               <Input
                 id="name"
@@ -232,12 +232,11 @@ export default function OnboardingPage() {
 
             {/* Date of Birth */}
             <div className="space-y-2">
-              <Label className="text-gray-700 font-medium flex items-center gap-2">
-                <Calendar className="w-4 h-4" /> Date of Birth
+              <Label className="text-gray-700 font-medium">
+                Date of Birth
               </Label>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <Label className="text-xs text-gray-500 mb-1 block">Day</Label>
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -259,7 +258,6 @@ export default function OnboardingPage() {
                   />
                 </div>
                 <div className="flex-1">
-                  <Label className="text-xs text-gray-500 mb-1 block">Month</Label>
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -281,7 +279,6 @@ export default function OnboardingPage() {
                   />
                 </div>
                 <div className="flex-[1.5]">
-                  <Label className="text-xs text-gray-500 mb-1 block">Year</Label>
                   <Input
                     type="text"
                     inputMode="numeric"
