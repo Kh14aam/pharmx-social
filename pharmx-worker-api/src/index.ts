@@ -5,6 +5,7 @@ import { profileRoutes } from './routes/profile'
 import { usersRoutes } from './routes/users'
 import { chatsRoutes } from './routes/chats'
 import uploadRoutes from './routes/upload'
+import diagnosticRoutes from './routes/diagnostic'
 
 // Export Durable Objects
 export { MatchmakingQueue } from './durable-objects/MatchmakingQueue'
@@ -85,6 +86,7 @@ api.route('/profile', profileRoutes)
 api.route('/users', usersRoutes)
 api.route('/chats', chatsRoutes)
 api.route('/upload', uploadRoutes)
+api.route('/diagnostic', diagnosticRoutes)
 
 // 404 handler
 app.notFound((c) => {

@@ -125,10 +125,28 @@ export default function OnboardingPage() {
       router.push("/users")
     } catch (error) {
       console.error('[Onboarding] Profile creation error:', error)
+      
+      // Extract detailed error message
+      let errorMessage = "Failed to create profile. Please try again."
+      if (error instanceof Error) {
+        errorMessage = error.message
+        // Check if there are additional details
+        if ((error as any).details) {
+          errorMessage = `${error.message} - ${(error as any).details}`
+        }
+      }
+      
       toast({
         title: "Failed to create profile",
-        description: error instanceof Error ? error.message : "Failed to create profile. Please try again.",
+        description: errorMessage,
         variant: "destructive",
+      })
+      
+      // Also log the full error details to console
+      console.error('[Onboarding] Full error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        details: (error as any).details,
+        error
       })
     }
   }
