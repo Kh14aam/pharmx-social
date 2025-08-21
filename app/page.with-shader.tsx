@@ -1,10 +1,30 @@
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { Mic } from "lucide-react"
 
-export default function Home() {
+const ShaderAnimation = dynamic(
+  () => import("@/components/ui/shader-animation").then(mod => mod.ShaderAnimation),
+  { 
+    ssr: false,
+    loading: () => <div className="w-full h-screen bg-black" />
+  }
+)
+// import { auth } from "@/auth"
+// import { redirect } from "next/navigation"
+
+export default async function Home() {
+  // const session = await auth()
+  
+  // if (session) {
+  //   redirect("/app/voice")
+  // }
+
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-gradient-to-br from-purple-900 via-black to-blue-900">
+    <div className="relative w-full h-screen overflow-hidden">
+      {/* Shader Animation Background */}
+      <ShaderAnimation />
+      
       {/* Content Overlay */}
       <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
         <div className="text-center space-y-6">
@@ -38,14 +58,9 @@ export default function Home() {
             <div className="p-4 bg-black/50 backdrop-blur-sm rounded-xl border border-white/10">
               <p className="text-xs text-center mb-3 text-yellow-300">⚠️ Development Mode</p>
               <div className="flex flex-wrap gap-2 justify-center">
-                <Link href="/test">
+                <Link href="/api/auth/signin/google">
                   <Button size="sm" variant="ghost" className="text-white hover:text-white hover:bg-white/10">
-                    🧪 Test Page
-                  </Button>
-                </Link>
-                <Link href="/api/health">
-                  <Button size="sm" variant="ghost" className="text-white hover:text-white hover:bg-white/10">
-                    🏥 Health Check
+                    🔐 Google Login
                   </Button>
                 </Link>
                 <Link href="/app/users">
