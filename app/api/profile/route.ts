@@ -1,8 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth0 } from "@/lib/auth0"
-import { drizzle } from 'drizzle-orm/d1'
-import { profiles, users } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
 import { z } from "zod"
 
 export const runtime = 'edge'
@@ -17,11 +13,8 @@ const profileSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth()
-    
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    // TODO: Implement Auth0 session validation when configured
+    // For now, return placeholder response
     
     const body = await req.json()
     const data = profileSchema.parse(body)
@@ -35,58 +28,16 @@ export async function POST(req: NextRequest) {
       )
     }
     
-    // Check if profile already exists
-    const existingProfile = await prisma.profile.findUnique({
-      where: { userId: session.user.id },
+    // TODO: Implement D1 database operations when configured
+    // Placeholder response
+    return NextResponse.json({
+      id: crypto.randomUUID(),
+      name: data.name,
+      gender: data.gender,
+      bio: data.bio,
+      dob: data.dob.toISOString(),
+      avatarUrl: data.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${data.name}`,
     })
-    
-    if (existingProfile) {
-      // Update profile (but not gender if it's locked)
-      const updateData: {
-        name: string
-        bio: string
-        dob: Date
-        avatarUrl?: string
-        gender?: "male" | "female"
-        genderLocked?: boolean
-      } = {
-        name: data.name,
-        bio: data.bio,
-        dob: data.dob,
-      }
-      
-      if (data.avatarUrl) {
-        updateData.avatarUrl = data.avatarUrl
-      }
-      
-      // Only allow gender update if not locked
-      if (!existingProfile.genderLocked) {
-        updateData.gender = data.gender
-        updateData.genderLocked = true
-      }
-      
-      const profile = await prisma.profile.update({
-        where: { userId: session.user.id },
-        data: updateData,
-      })
-      
-      return NextResponse.json(profile)
-    } else {
-      // Create new profile
-      const profile = await prisma.profile.create({
-        data: {
-          userId: session.user.id,
-          name: data.name,
-          gender: data.gender,
-          genderLocked: true,
-          dob: data.dob,
-          bio: data.bio,
-          avatarUrl: data.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${data.name}`,
-        },
-      })
-      
-      return NextResponse.json(profile)
-    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -105,22 +56,13 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
-    const session = await auth()
+    // TODO: Implement Auth0 session validation when configured
+    // TODO: Implement D1 database operations when configured
     
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    
-    const profile = await prisma.profile.findUnique({
-      where: { userId: session.user.id },
-      include: { user: true },
-    })
-    
-    if (!profile) {
-      return NextResponse.json({ error: "Profile not found" }, { status: 404 })
-    }
-    
-    return NextResponse.json(profile)
+    // Placeholder response
+    return NextResponse.json({ 
+      error: "Profile API not yet configured. Please set up Auth0 and D1 database." 
+    }, { status: 503 })
   } catch (error) {
     console.error("Profile fetch error:", error)
     return NextResponse.json(
