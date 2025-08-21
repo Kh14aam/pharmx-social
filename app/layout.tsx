@@ -11,23 +11,44 @@ const figtree = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: "PharmX Voice Social - Meet new people. Be social.",
-  description: "Connect with new people through voice calls and text chats",
+  title: "PharmX Social - Meet New People",
+  description: "Connect with new people through voice calls and text chats. Join PharmX Social to meet like-minded individuals.",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "PharmX Voice",
+    title: "PharmX Social",
   },
   formatDetection: {
     telephone: false,
   },
   openGraph: {
-    title: "PharmX Voice Social",
-    description: "Meet new people. Be social.",
+    title: "PharmX Social - Meet New People",
+    description: "Connect with new people through voice calls and text chats. Join PharmX Social to meet like-minded individuals.",
     url: "https://chat.pharmx.co.uk",
-    siteName: "PharmX Voice Social",
+    siteName: "PharmX Social",
     type: "website",
+    images: [
+      {
+        url: "https://assets.pharmx.co.uk/X%20favicon%20circle%20black.png",
+        width: 512,
+        height: 512,
+        alt: "PharmX Social",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "PharmX Social - Meet New People",
+    description: "Connect with new people through voice calls and text chats.",
+    images: ["https://assets.pharmx.co.uk/X%20favicon%20circle%20black.png"],
   },
 };
 
@@ -47,10 +68,12 @@ export default function RootLayout({
   return (
     <html lang="en-GB">
       <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/icon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="PharmX Voice" />
+        <meta name="apple-mobile-web-app-title" content="PharmX Social" />
       </head>
       <body
         className={`${figtree.variable} font-sans antialiased`}
