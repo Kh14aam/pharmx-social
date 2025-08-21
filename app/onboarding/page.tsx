@@ -113,131 +113,122 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        <div className="bg-zinc-900 rounded-2xl p-6 md:p-8 border border-zinc-800">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Header */}
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-white">Complete Your Profile</h1>
-            <p className="text-zinc-400 mt-1">All fields are required</p>
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Complete Your Profile</h1>
+            <p className="text-gray-500 mt-2">All fields are required</p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Two column layout for desktop, single column for mobile */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Left Column */}
-              <div className="space-y-4">
-                {/* Avatar Upload */}
-                <div className="flex flex-col items-center space-y-3">
-                  <Avatar className="w-20 h-20 border-2 border-zinc-700">
-                    {avatarPreview || user?.picture ? (
-                      <AvatarImage src={avatarPreview || user?.picture || ""} />
-                    ) : (
-                      <AvatarFallback className="bg-zinc-800">
-                        <User className="w-8 h-8 text-zinc-400" />
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  <Label htmlFor="avatar" className="cursor-pointer">
-                    <Input
-                      id="avatar"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleAvatarUpload}
-                      disabled={uploading}
-                    />
-                    <Button type="button" variant="outline" size="sm" disabled={uploading} className="text-xs">
-                      {uploading ? "Uploading..." : "Upload Photo"}
-                    </Button>
-                  </Label>
-                </div>
+            {/* Avatar Upload - Centered */}
+            <div className="flex flex-col items-center space-y-3">
+              <Avatar className="w-24 h-24 border-4 border-gray-200">
+                {avatarPreview || user?.picture ? (
+                  <AvatarImage src={avatarPreview || user?.picture || ""} />
+                ) : (
+                  <AvatarFallback className="bg-gray-100">
+                    <User className="w-10 h-10 text-gray-400" />
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <Label htmlFor="avatar" className="cursor-pointer">
+                <Input
+                  id="avatar"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                  disabled={uploading}
+                />
+                <Button type="button" variant="outline" size="sm" disabled={uploading}>
+                  {uploading ? "Uploading..." : "Upload Photo"}
+                </Button>
+              </Label>
+            </div>
 
-                {/* Name Input */}
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-zinc-300 flex items-center gap-2">
-                    <User className="w-4 h-4" /> Name
-                  </Label>
-                  <Input
-                    id="name"
-                    placeholder="Your display name"
-                    className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
-                    {...register("name")}
-                    defaultValue={user?.name || ""}
-                  />
-                  {errors.name && (
-                    <p className="text-sm text-red-400">{errors.name.message}</p>
-                  )}
-                </div>
+            {/* Name Input */}
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-gray-700 font-medium flex items-center gap-2">
+                <User className="w-4 h-4" /> Name
+              </Label>
+              <Input
+                id="name"
+                placeholder="Your display name"
+                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                {...register("name")}
+                defaultValue={user?.name || ""}
+              />
+              {errors.name && (
+                <p className="text-sm text-red-500">{errors.name.message}</p>
+              )}
+            </div>
 
-                {/* Date of Birth */}
-                <div className="space-y-2">
-                  <Label htmlFor="dob" className="text-zinc-300 flex items-center gap-2">
-                    <Calendar className="w-4 h-4" /> Date of Birth
-                  </Label>
-                  <Input
-                    id="dob"
-                    type="date"
-                    className="bg-zinc-800 border-zinc-700 text-white"
-                    {...register("dob")}
-                    max={format(new Date(), "yyyy-MM-dd")}
-                  />
-                  {errors.dob && (
-                    <p className="text-sm text-red-400">{errors.dob.message}</p>
-                  )}
+            {/* Gender Selection */}
+            <div className="space-y-2">
+              <Label className="text-gray-700 font-medium">Gender</Label>
+              <RadioGroup
+                onValueChange={(value) => setValue("gender", value as "male" | "female")}
+                className="flex gap-6"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="male" id="male" className="text-blue-600" />
+                  <Label htmlFor="male" className="text-gray-700 cursor-pointer">Male</Label>
                 </div>
-              </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="female" id="female" className="text-blue-600" />
+                  <Label htmlFor="female" className="text-gray-700 cursor-pointer">Female</Label>
+                </div>
+              </RadioGroup>
+              <p className="text-xs text-gray-500 flex items-center gap-1">
+                <Info className="w-3 h-3" /> Cannot be changed later
+              </p>
+              {errors.gender && (
+                <p className="text-sm text-red-500">{errors.gender.message}</p>
+              )}
+            </div>
 
-              {/* Right Column */}
-              <div className="space-y-4">
-                {/* Gender Selection */}
-                <div className="space-y-2">
-                  <Label className="text-zinc-300">Gender</Label>
-                  <RadioGroup
-                    onValueChange={(value) => setValue("gender", value as "male" | "female")}
-                    className="flex gap-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="male" id="male" className="border-zinc-600" />
-                      <Label htmlFor="male" className="text-zinc-300 cursor-pointer">Male</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="female" id="female" className="border-zinc-600" />
-                      <Label htmlFor="female" className="text-zinc-300 cursor-pointer">Female</Label>
-                    </div>
-                  </RadioGroup>
-                  <p className="text-xs text-zinc-500 flex items-center gap-1">
-                    <Info className="w-3 h-3" /> Cannot be changed later
-                  </p>
-                  {errors.gender && (
-                    <p className="text-sm text-red-400">{errors.gender.message}</p>
-                  )}
-                </div>
+            {/* Date of Birth */}
+            <div className="space-y-2">
+              <Label htmlFor="dob" className="text-gray-700 font-medium flex items-center gap-2">
+                <Calendar className="w-4 h-4" /> Date of Birth
+              </Label>
+              <Input
+                id="dob"
+                type="date"
+                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                {...register("dob")}
+                max={format(new Date(), "yyyy-MM-dd")}
+              />
+              {errors.dob && (
+                <p className="text-sm text-red-500">{errors.dob.message}</p>
+              )}
+            </div>
 
-                {/* Bio */}
-                <div className="space-y-2">
-                  <Label htmlFor="bio" className="text-zinc-300">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    placeholder="Tell us about yourself..."
-                    className="resize-none h-[120px] bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
-                    maxLength={160}
-                    {...register("bio")}
-                  />
-                  <p className="text-xs text-zinc-500 text-right">
-                    {watchedFields.bio?.length || 0}/160 characters
-                  </p>
-                  {errors.bio && (
-                    <p className="text-sm text-red-400">{errors.bio.message}</p>
-                  )}
-                </div>
-              </div>
+            {/* Bio */}
+            <div className="space-y-2">
+              <Label htmlFor="bio" className="text-gray-700 font-medium">Bio</Label>
+              <Textarea
+                id="bio"
+                placeholder="Tell us about yourself..."
+                className="resize-none h-24 w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                maxLength={160}
+                {...register("bio")}
+              />
+              <p className="text-xs text-gray-500 text-right">
+                {watchedFields.bio?.length || 0}/160 characters
+              </p>
+              {errors.bio && (
+                <p className="text-sm text-red-500">{errors.bio.message}</p>
+              )}
             </div>
 
             {/* Submit Button */}
             <Button 
               type="submit"
-              className="w-full bg-white text-black hover:bg-zinc-200 font-medium"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Creating Profile..." : "Complete Setup"}
