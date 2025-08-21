@@ -4,12 +4,35 @@ import { verifyAuth } from '../middleware/auth'
 
 const upload = new Hono<{ Bindings: Env }>()
 
+// Test endpoint to verify upload service is working
+upload.get('/test', async (c) => {
+  return c.json({
+    status: 'ok',
+    hasR2: !!c.env.AVATARS,
+    hasDB: !!c.env.DB,
+    timestamp: new Date().toISOString()
+  })
+})
+
 // Avatar upload endpoint - requires authentication
 upload.post('/avatar', verifyAuth, async (c) => {
   try {
     // Get authenticated user ID from middleware
     const userId = c.get('userId') as string
     const userEmail = c.get('userEmail') as string
+    
+    console.log(`[Upload] Starting avatar upload for user ${userId}, email: ${userEmail}`)
+    
+    // Check if we have required environment variables
+    if (!c.env.AVATARS) {
+      console.error('[Upload] R2 bucket AVATARS is not configured')
+      return c.json({ error: 'Storage service not configured' }, 500)
+    }
+    
+    if (!c.env.DB) {
+      console.error('[Upload] Database DB is not configured')
+      return c.json({ error: 'Database service not configured' }, 500)
+    }
     
     // Check if user exists in database first
     const existingUser = await c.env.DB.prepare(
@@ -18,21 +41,40 @@ upload.post('/avatar', verifyAuth, async (c) => {
     
     // If user doesn't exist, create a minimal profile first
     if (!existingUser) {
-      console.log(`Creating user profile for ${userId} during avatar upload`)
-      await c.env.DB.prepare(
-        `INSERT INTO users (id, email, created_at, updated_at)
-         VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-      ).bind(userId, userEmail).run()
+      console.log(`[Upload] Creating user profile for ${userId} during avatar upload`)
+      try {
+        await c.env.DB.prepare(
+          `INSERT INTO users (id, email, created_at, updated_at)
+           VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+        ).bind(userId, userEmail || `${userId}@placeholder.com`).run()
+      } catch (dbError) {
+        console.error('[Upload] Error creating user:', dbError)
+        // Continue anyway - the user might already exist
+      }
+    } else {
+      console.log(`[Upload] User ${userId} already exists`)
     }
     
     // Parse the multipart form data
-    const formData = await c.req.formData()
+    let formData: FormData
+    try {
+      formData = await c.req.formData()
+    } catch (parseError) {
+      console.error('[Upload] Error parsing form data:', parseError)
+      return c.json({ error: 'Invalid form data' }, 400)
+    }
+    
+    console.log(`[Upload] FormData keys:`, Array.from(formData.keys()))
+    
     // Try both field names for compatibility
     const file = (formData.get('file') || formData.get('avatar')) as File
     
-    if (!file) {
-      return c.json({ error: 'No file provided' }, 400)
+    if (!file || !(file instanceof File)) {
+      console.error(`[Upload] No valid file found in form data. Keys: ${Array.from(formData.keys()).join(', ')}`)
+      return c.json({ error: 'No file provided in request' }, 400)
     }
+    
+    console.log(`[Upload] File received: ${file.name}, size: ${file.size}, type: ${file.type}`)
     
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']

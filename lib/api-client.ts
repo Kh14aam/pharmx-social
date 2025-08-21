@@ -51,6 +51,8 @@ export class ApiClient {
       headers['X-Session-ID'] = this.sessionId
     }
 
+    console.log(`[API] ${options.method || 'GET'} ${endpoint}`)
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
@@ -58,14 +60,28 @@ export class ApiClient {
     })
 
     if (!response.ok) {
+      // Try to parse error response
+      let errorMessage = `Request failed with status ${response.status}`
+      try {
+        const errorData = await response.json()
+        errorMessage = errorData.error || errorData.message || errorMessage
+        console.error(`[API Error] ${endpoint}:`, errorData)
+      } catch {
+        // If response is not JSON, use status text
+        errorMessage = response.statusText || errorMessage
+      }
+
       if (response.status === 401) {
         this.clearAuth()
         window.location.href = '/login'
       }
-      throw new Error(`API Error: ${response.status}`)
+      
+      throw new Error(errorMessage)
     }
 
-    return response.json()
+    const data = await response.json()
+    console.log(`[API Response] ${endpoint}:`, data)
+    return data
   }
 
   // Auth endpoints

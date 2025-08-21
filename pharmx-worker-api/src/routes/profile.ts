@@ -21,6 +21,8 @@ function normalizeGender(input?: string | null): 'male' | 'female' | null {
 profileRoutes.get('/', verifyAuth, async (c) => {
   const userId = c.get('userId')
   
+  console.log(`[Profile] Fetching profile for user ${userId}`)
+  
   try {
     // Query user from D1 database
     const result = await c.env.DB.prepare(
@@ -28,13 +30,18 @@ profileRoutes.get('/', verifyAuth, async (c) => {
     ).bind(userId).first()
     
     if (!result) {
+      console.log(`[Profile] User ${userId} not found in database`)
       return c.json({ error: 'User not found' }, 404)
     }
     
+    console.log(`[Profile] Successfully fetched profile for user ${userId}`)
     return c.json(result)
   } catch (error) {
-    console.error('Error fetching profile:', error)
-    return c.json({ error: 'Failed to fetch profile' }, 500)
+    console.error('[Profile] Error fetching profile:', error)
+    return c.json({ 
+      error: 'Failed to fetch profile',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
   }
 })
 
@@ -43,11 +50,14 @@ profileRoutes.post('/', verifyAuth, async (c) => {
   const userId = c.get('userId')
   const userEmail = c.get('userEmail')
   
+  console.log(`[Profile] Creating/updating profile for user ${userId}`)
+  
   let body: any = {}
   try {
     body = await c.req.json()
+    console.log(`[Profile] Request body:`, body)
   } catch (error) {
-    console.error('Failed to parse request body:', error)
+    console.error('[Profile] Failed to parse request body:', error)
     return c.json({ error: 'Invalid request body' }, 400)
   }
   
@@ -59,7 +69,10 @@ profileRoutes.post('/', verifyAuth, async (c) => {
   const avatarUrl = body?.avatarUrl || body?.avatar_url || null
   const imageKey = body?.imageKey || body?.image_key || null
 
+  console.log(`[Profile] Parsed data - name: ${name}, gender: ${gender}, dob: ${dob}, avatarUrl: ${avatarUrl}`)
+
   if (!name) {
+    console.error('[Profile] Name is required but not provided')
     return c.json({ error: 'Name is required' }, 400)
   }
 

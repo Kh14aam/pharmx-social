@@ -55,6 +55,8 @@ export default function OnboardingPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    console.log('[Onboarding] Selected file:', file.name, 'size:', file.size, 'type:', file.type)
+
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File too large",
@@ -74,18 +76,21 @@ export default function OnboardingPage() {
     setUploading(true)
 
     try {
+      console.log('[Onboarding] Uploading avatar...')
       // Upload to Cloudflare R2 via Worker API
       const result = await apiClient.profile.uploadAvatar(file)
+      console.log('[Onboarding] Upload result:', result)
       setValue("avatarUrl", result.url) // Store the server URL
       
       toast({
         title: "Photo uploaded",
         description: "Your profile photo has been updated",
       })
-    } catch {
+    } catch (error) {
+      console.error('[Onboarding] Upload error:', error)
       toast({
         title: "Upload failed",
-        description: "Please try again",
+        description: error instanceof Error ? error.message : "Failed to upload image. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -105,8 +110,11 @@ export default function OnboardingPage() {
         avatarUrl: data.avatarUrl,
       }
       
+      console.log('[Onboarding] Submitting profile:', profileData)
+      
       // Call Worker API with authentication
-      await apiClient.profile.create(profileData)
+      const result = await apiClient.profile.create(profileData)
+      console.log('[Onboarding] Profile created:', result)
 
       toast({
         title: "Welcome to PharmX Social!",
@@ -114,11 +122,11 @@ export default function OnboardingPage() {
       })
 
       // Redirect to users page instead of voice
-      router.push("/app/users")
+      router.push("/users")
     } catch (error) {
-      console.error('Profile creation error:', error)
+      console.error('[Onboarding] Profile creation error:', error)
       toast({
-        title: "Error",
+        title: "Failed to create profile",
         description: error instanceof Error ? error.message : "Failed to create profile. Please try again.",
         variant: "destructive",
       })
