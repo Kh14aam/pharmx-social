@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { User, Calendar, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { useUser } from '@auth0/nextjs-auth0/client'
+import { useUser } from '@/components/providers/session-provider'
 
 const profileSchema = z.object({
   name: z.string().min(2).max(40),
@@ -32,7 +32,7 @@ type ProfileFormData = z.infer<typeof profileSchema>
 export default function OnboardingPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { user, error, isLoading: isUserLoading } = useUser()
+  const { user } = useUser()
   const [avatarPreview, setAvatarPreview] = useState<string>("")
   const [uploading, setUploading] = useState(false)
 
