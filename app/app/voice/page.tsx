@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -12,6 +12,15 @@ import { apiClient } from "@/lib/api-client"
 
 type VoiceState = "idle" | "searching" | "incoming_call" | "connecting" | "in_call" | "deciding" | "waiting_decision"
 
+// Engaging waiting messages that rotate during search
+const waitingMessages = [
+  "Looking for the perfect voice match for you :)",
+  "Hang tight! Connecting you to someone new...",
+  "You're in line – we're working hard to find a connection :)",
+  "Still searching... Thanks for your patience :)",
+  "Almost there! A new voice chat partner is on the way :)",
+]
+
 export default function VoicePage() {
   const { toast } = useToast()
   const router = useRouter()
@@ -21,6 +30,7 @@ export default function VoicePage() {
   const [, setCallId] = useState<string | null>(null)
   const [decision, setDecision] = useState<"stay" | "skip" | null>(null)
   const [partner, setPartner] = useState<{ name: string; avatar?: string; id: string } | null>(null)
+  const [waitingMessageIndex, setWaitingMessageIndex] = useState(0)
   
   const signalingRef = useRef<SignalingClient | null>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
@@ -369,6 +379,18 @@ export default function VoicePage() {
     setTimeout(() => startFindingVoice(), 1000)
   }
 
+  // Rotate waiting messages during search
+  useEffect(() => {
+    if (state === "searching") {
+      setWaitingMessageIndex(0) // Reset to first message
+      const interval = setInterval(() => {
+        setWaitingMessageIndex((prev) => (prev + 1) % waitingMessages.length)
+      }, 5000) // Change message every 5 seconds
+      
+      return () => clearInterval(interval)
+    }
+  }, [state])
+
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-8rem)] px-4">
       <audio ref={remoteAudioRef} autoPlay playsInline />
@@ -407,8 +429,8 @@ export default function VoicePage() {
             
             <div className="space-y-2">
               <p className="text-lg font-medium">Finding someone…</p>
-              <p className="text-sm text-muted-foreground">
-                This usually takes a few seconds
+              <p className="text-sm text-muted-foreground transition-all duration-300">
+                {waitingMessages[waitingMessageIndex]}
               </p>
             </div>
           </div>
