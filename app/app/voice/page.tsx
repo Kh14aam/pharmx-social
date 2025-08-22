@@ -45,6 +45,52 @@ export default function VoicePage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  // Helper to request microphone access and remember permission
+  const getMicrophoneStream = async () => {
+    if (localStreamRef.current) return localStreamRef.current
+
+    const constraints = {
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: false,
+      },
+    }
+
+    // Check permission if supported to avoid unnecessary prompts
+    try {
+      const permission = await navigator.permissions?.query({
+        // PermissionName isn't narrowed in TS yet
+        name: 'microphone' as PermissionName,
+      })
+      if (permission && permission.state === 'denied') {
+        throw new Error('Microphone permission denied')
+      }
+    } catch {
+      // Ignore if Permissions API not supported
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints)
+    localStreamRef.current = stream
+    try {
+      localStorage.setItem('micPermission', 'granted')
+    } catch {
+      // Ignore storage errors
+    }
+    return stream
+  }
+
+  // Pre-check microphone permission to minimise prompts on refresh
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (localStorage.getItem('micPermission') === 'granted') {
+      navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .then(stream => stream.getTracks().forEach(t => t.stop()))
+        .catch(() => {})
+    }
+  }, [])
+
   // Cleanup function
   const cleanup = useCallback(() => {
     // Stop countdown
@@ -93,14 +139,7 @@ export default function VoicePage() {
       }
 
       // Request microphone permission
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: { 
-          echoCancellation: true, 
-          noiseSuppression: true, 
-          autoGainControl: false 
-        } 
-      })
-      localStreamRef.current = stream
+      await getMicrophoneStream()
 
       setState("searching")
 
@@ -135,17 +174,38 @@ export default function VoicePage() {
         console.log('[Voice] Signaling state:', signalingState)
       })
 
-      signaling.on(evt('onPaired'), async (role: 'offerer' | 'answerer', callId: string, partner?: { name: string; avatar?: string; id: string }) => {
-        console.log(`[Voice] Paired as ${role} for call ${callId}`, partner)
-        setCallId(callId)
-        setPartner(partner || null)
-        
-        // Show incoming call preview
-        setState("incoming_call")
-        
-        // Store role for later use
-        signalingRef.current!.role = role
-      })
+      signaling.on(
+        evt('onPaired'),
+        async (
+          role: 'offerer' | 'answerer',
+          callId: string,
+          partner?: { name: string; avatar?: string; id: string }
+        ) => {
+          console.log(`[Voice] Paired as ${role} for call ${callId}`, partner)
+          setCallId(callId)
+
+          if (!partner) {
+            // No partner ready yet, keep searching
+            setPartner(null)
+            setState('searching')
+            return
+          }
+
+          setPartner(partner)
+
+          if (role === 'answerer') {
+            // Show accept/decline for the receiver
+            setState('incoming_call')
+          } else {
+            // Caller auto-accepts and waits for connection
+            signalingRef.current?.sendAccept()
+            setState('connecting')
+          }
+
+          // Store role for later use
+          signalingRef.current!.role = role
+        }
+      )
 
       signaling.on(evt('onBothAccepted'), async () => {
         console.log('[Voice] Both users accepted, setting up WebRTC')
