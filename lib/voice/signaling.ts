@@ -3,7 +3,7 @@
 export type SignalingState = 'disconnected' | 'connecting' | 'queued' | 'paired' | 'in_call' | 'deciding' | 'resolved'
 
 export type ServerMessage =
-  | { type: 'status'; state: 'queued' | 'paired'; role?: 'offerer' | 'answerer'; callId?: string }
+  | { type: 'status'; state: 'queued' | 'paired'; role?: 'offerer' | 'answerer'; callId?: string; partner?: { name: string; avatar?: string; id: string } }
   | { type: 'offer'; sdp: RTCSessionDescriptionInit }
   | { type: 'answer'; sdp: RTCSessionDescriptionInit }
   | { type: 'ice'; candidate: RTCIceCandidateInit }
@@ -16,7 +16,7 @@ export type ServerMessage =
 
 export interface SignalingEvents {
   onStateChange: (state: SignalingState) => void
-  onPaired: (role: 'offerer' | 'answerer', callId: string) => void
+  onPaired: (role: 'offerer' | 'answerer', callId: string, partner?: { name: string; avatar?: string; id: string }) => void
   onOffer: (sdp: RTCSessionDescriptionInit) => void
   onAnswer: (sdp: RTCSessionDescriptionInit) => void
   onIceCandidate: (candidate: RTCIceCandidateInit) => void
@@ -36,6 +36,7 @@ export class SignalingClient {
   private pingInterval: NodeJS.Timeout | null = null
   private wsUrl: string
   private token: string
+  public role?: 'offerer' | 'answerer' // Add role property for storing the user's role
 
   constructor(wsUrl: string, token: string) {
     this.wsUrl = wsUrl
@@ -155,7 +156,7 @@ export class SignalingClient {
           this.updateState('queued')
         } else if (message.state === 'paired' && message.role && message.callId) {
           this.updateState('paired')
-          this.events.onPaired?.(message.role, message.callId)
+          this.events.onPaired?.(message.role, message.callId, message.partner)
         }
         break
       
