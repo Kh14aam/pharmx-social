@@ -153,6 +153,16 @@ export default function VoicePage() {
         await setupWebRTC(role)
       })
 
+      signaling.on(evt('onCallDeclined'), () => {
+        console.log('[Voice] Partner declined the call, searching again')
+        toast({
+          title: 'They were busy',
+          description: 'Searching again...'
+        })
+        setPartner(null)
+        setState('searching')
+      })
+
       signaling.on(evt('onOffer'), async (sdp) => {
         if (pcRef.current) {
           await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp))
@@ -523,15 +533,15 @@ export default function VoicePage() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="space-y-1">
-                  <h3 className="text-lg font-semibold">{partner?.name || "Connecting..."}</h3>
-                  <p className="text-sm text-muted-foreground">Connecting...</p>
+                  <h3 className="text-lg font-semibold">{partner?.name || "Waiting..."}</h3>
+                  <p className="text-sm text-muted-foreground">Waiting for the other person to connect…</p>
                 </div>
               </div>
             )}
             {!partner && (
               <div className="space-y-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-                <p className="text-lg font-medium">Connecting…</p>
+                <p className="text-lg font-medium">Waiting for the other person to connect…</p>
               </div>
             )}
           </div>
