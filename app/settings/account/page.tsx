@@ -1,18 +1,17 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
-// useRouter import removed - not used in this component
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-// Avatar components removed - not used in this component
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { ChevronRight, Camera, User, Loader2 } from "lucide-react"
+import { Info, User, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { apiClient } from "@/lib/api-client"
 
@@ -28,11 +27,14 @@ const profileSchema = z.object({
   gender: z.enum(["male", "female"]),
   dobDay: z.string().regex(/^(0?[1-9]|[12][0-9]|3[01])$/, "Invalid day"),
   dobMonth: z.string().regex(/^(0?[1-9]|1[012])$/, "Invalid month"),
-  dobYear: z.string().regex(/^(19|20)\d{2}$/, "Invalid year").refine((year) => {
-    const currentYear = new Date().getFullYear()
-    const birthYear = parseInt(year)
-    return currentYear - birthYear >= 18
-  }, "You must be at least 18 years old"),
+  dobYear: z
+    .string()
+    .regex(/^(19|20)\d{2}$/, "Invalid year")
+    .refine((year) => {
+      const currentYear = new Date().getFullYear()
+      const birthYear = parseInt(year)
+      return currentYear - birthYear >= 18
+    }, "You must be at least 18 years old"),
   bio: z.string().max(160),
   avatarUrl: z.string().optional(),
 })
@@ -49,12 +51,13 @@ interface UserProfile {
 }
 
 export default function AccountSettingsPage() {
-  // const router = useRouter() // Removed - not used in this component
+  const router = useRouter()
   const { toast } = useToast()
-  const [avatarPreview, setAvatarPreview] = useState<string>("")
+  const [avatarPreview, setAvatarPreview] = useState("")
   const [uploading, setUploading] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<UserProfile | null>(null)
+  const [dobDay, setDobDay] = useState("")
+  const [dobMonth, setDobMonth] = useState("")
+  const [dobYear, setDobYear] = useState("")
 
   const {
     register,
@@ -70,49 +73,47 @@ export default function AccountSettingsPage() {
 
   useEffect(() => {
     fetchUserProfile()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchUserProfile = async () => {
     try {
-      setLoading(true)
       const data = await apiClient.profile.get()
-      
+
       const profile: UserProfile = {
-        name: data.name || data.username || '',
-        email: data.email || '',
-        gender: data.gender || 'male',
-        dob: data.dob || '',
-        bio: data.bio || '',
-        avatarUrl: data.avatar_url || data.profile_picture_url || null
+        name: data.name || data.username || "",
+        email: data.email || "",
+        gender: data.gender || "male",
+        dob: data.dob || "",
+        bio: data.bio || "",
+        avatarUrl: data.avatar_url || data.profile_picture_url || null,
       }
-      
-      setUser(profile)
+
       setAvatarPreview(withApiBase(profile.avatarUrl))
-      
-      // Set form values
       setValue("name", profile.name)
       setValue("gender", profile.gender as "male" | "female")
       setValue("bio", profile.bio)
       setValue("avatarUrl", profile.avatarUrl || "")
-      
-      // Parse date of birth
+
       if (profile.dob) {
         const date = new Date(profile.dob)
-        setValue("dobDay", date.getDate().toString())
-        setValue("dobMonth", (date.getMonth() + 1).toString())
-        setValue("dobYear", date.getFullYear().toString())
+        const day = date.getDate().toString().padStart(2, "0")
+        const month = (date.getMonth() + 1).toString().padStart(2, "0")
+        const year = date.getFullYear().toString()
+        setDobDay(day)
+        setDobMonth(month)
+        setDobYear(year)
+        setValue("dobDay", day)
+        setValue("dobMonth", month)
+        setValue("dobYear", year)
       }
-      
     } catch (error) {
-      console.error('Error fetching profile:', error)
+      console.error("Error fetching profile:", error)
       toast({
         title: "Error loading profile",
         description: "Failed to load your profile data",
         variant: "destructive",
       })
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -129,7 +130,6 @@ export default function AccountSettingsPage() {
       return
     }
 
-    // Preview the image locally first
     const reader = new FileReader()
     reader.onloadend = () => {
       setAvatarPreview(reader.result as string)
@@ -137,18 +137,17 @@ export default function AccountSettingsPage() {
     reader.readAsDataURL(file)
 
     setUploading(true)
-
     try {
       const result = await apiClient.profile.uploadAvatar(file)
       setValue("avatarUrl", result.url)
       setAvatarPreview(withApiBase(result.url))
-      
+
       toast({
         title: "Photo updated",
         description: "Your profile photo has been updated",
       })
     } catch (error) {
-      console.error('Upload error:', error)
+      console.error("Upload error:", error)
       toast({
         title: "Upload failed",
         description: error instanceof Error ? error.message : "Failed to upload image",
@@ -161,8 +160,7 @@ export default function AccountSettingsPage() {
 
   const onSubmit = async (data: ProfileFormData) => {
     try {
-      // Combine date parts into ISO date string
-      const dob = `${data.dobYear}-${data.dobMonth.padStart(2, '0')}-${data.dobDay.padStart(2, '0')}`
+      const dob = `${data.dobYear}-${data.dobMonth.padStart(2, "0")}-${data.dobDay.padStart(2, "0")}`
       const profileData = {
         name: data.name,
         gender: data.gender,
@@ -170,19 +168,17 @@ export default function AccountSettingsPage() {
         bio: data.bio,
         avatarUrl: data.avatarUrl,
       }
-      
+
       await apiClient.profile.update(profileData)
-      
+
       toast({
         title: "Profile updated",
         description: "Your profile has been successfully updated",
       })
 
-      // Refresh the profile data
       await fetchUserProfile()
-      
     } catch (error) {
-      console.error('Profile update error:', error)
+      console.error("Profile update error:", error)
       toast({
         title: "Update failed",
         description: error instanceof Error ? error.message : "Failed to update profile",
@@ -191,28 +187,33 @@ export default function AccountSettingsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b z-10">
-          <div className="flex items-center justify-between px-4 py-3">
-            <Link href="/settings" className="p-2 -ml-2">
-              <ChevronRight className="h-5 w-5 rotate-180" />
-            </Link>
-            <h1 className="text-lg font-semibold">Account</h1>
-            <div className="w-9" />
-          </div>
-        </div>
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    )
+  const handleDeleteAccount = async () => {
+    if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      await apiClient.profile.delete()
+      apiClient.clearAuth()
+
+      toast({
+        title: "Account deleted",
+        description: "Your account has been removed",
+      })
+
+      router.push("/login")
+    } catch (error) {
+      console.error("Delete account error:", error)
+      toast({
+        title: "Deletion failed",
+        description: error instanceof Error ? error.message : "Failed to delete account",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b z-10">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/settings" className="p-2 -ml-2">
@@ -223,167 +224,186 @@ export default function AccountSettingsPage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Avatar Upload */}
-          <div className="flex flex-col items-center space-y-3">
-            <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-muted">
-              {avatarPreview ? (
-                <div 
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={{ 
-                    backgroundImage: `url(${avatarPreview})`,
-                  }}
-                />
-              ) : (
-                <div className="absolute inset-0 bg-muted flex items-center justify-center">
-                  <User className="w-12 h-12 text-muted-foreground" />
+      <div className="flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white dark:bg-card rounded-2xl shadow-xl p-8">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* Avatar Upload */}
+              <div className="flex flex-col items-center space-y-3">
+                <div className="relative w-48 h-48 rounded-lg overflow-hidden border-4 border-gray-200">
+                  {avatarPreview ? (
+                    <div
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: `url(${avatarPreview})` }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+                      <User className="w-16 h-16 text-gray-400" />
+                    </div>
+                  )}
                 </div>
-              )}
-              <button
-                type="button"
-                onClick={() => document.getElementById('avatar')?.click()}
-                className="absolute bottom-2 right-2 p-2 bg-primary rounded-full text-primary-foreground"
-                disabled={uploading}
+                <div>
+                  <Input
+                    id="avatar"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                    disabled={uploading}
+                  />
+                  <Label htmlFor="avatar" className="cursor-pointer inline-block">
+                    <div className="bg-white hover:bg-gray-100 text-black border border-gray-300 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                      {uploading ? "Uploading..." : "Upload Photo"}
+                    </div>
+                  </Label>
+                </div>
+              </div>
+
+              {/* Name Input */}
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-gray-700 font-medium">
+                  Name
+                </Label>
+                <Input
+                  id="name"
+                  placeholder="Your display name"
+                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  {...register("name")}
+                />
+                {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+              </div>
+
+              {/* Gender (read-only) */}
+              <div className="space-y-2">
+                <Label className="text-gray-700 font-medium">Gender</Label>
+                <RadioGroup value={watch("gender")} className="flex gap-6">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="male" id="male" disabled className="text-black border-gray-400" />
+                    <Label htmlFor="male" className="text-gray-700">
+                      Male
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="female" id="female" disabled className="text-black border-gray-400" />
+                    <Label htmlFor="female" className="text-gray-700">
+                      Female
+                    </Label>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <Info className="w-3 h-3" /> Cannot be changed
+                </p>
+              </div>
+
+              {/* Date of Birth */}
+              <div className="space-y-2">
+                <Label className="text-gray-700 font-medium">Date of Birth</Label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="DD"
+                      maxLength={2}
+                      className="w-full text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      {...register("dobDay")}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "")
+                        setDobDay(value)
+                        setValue("dobDay", value)
+                        if (value.length === 2) {
+                          const monthInput = document.querySelector('input[name="dobMonth"]') as HTMLInputElement
+                          monthInput?.focus()
+                        }
+                      }}
+                      value={dobDay}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="MM"
+                      maxLength={2}
+                      className="w-full text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      {...register("dobMonth")}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "")
+                        setDobMonth(value)
+                        setValue("dobMonth", value)
+                        if (value.length === 2) {
+                          const yearInput = document.querySelector('input[name="dobYear"]') as HTMLInputElement
+                          yearInput?.focus()
+                        }
+                      }}
+                      value={dobMonth}
+                    />
+                  </div>
+                  <div className="flex-[1.5]">
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="YYYY"
+                      maxLength={4}
+                      className="w-full text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      {...register("dobYear")}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "")
+                        setDobYear(value)
+                        setValue("dobYear", value)
+                      }}
+                      value={dobYear}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">You must be 18 or older</p>
+                {(errors.dobDay || errors.dobMonth || errors.dobYear) && (
+                  <p className="text-sm text-red-500">
+                    {errors.dobDay?.message || errors.dobMonth?.message || errors.dobYear?.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Bio */}
+              <div className="space-y-2">
+                <Label htmlFor="bio" className="text-gray-700 font-medium">
+                  Bio
+                </Label>
+                <Textarea
+                  id="bio"
+                  placeholder="Tell us about yourself..."
+                  className="resize-none h-24 w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  maxLength={160}
+                  {...register("bio")}
+                />
+                <p className="text-xs text-gray-500 text-right">{watchedFields.bio?.length || 0}/160 characters</p>
+                {errors.bio && <p className="text-sm text-red-500">{errors.bio.message}</p>}
+              </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                className="w-full bg-black hover:bg-gray-900 text-white font-semibold py-3 rounded-lg transition-colors"
+                disabled={isSubmitting}
               >
-                <Camera className="h-4 w-4" />
-              </button>
-            </div>
-            <Input
-              id="avatar"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarUpload}
-              disabled={uploading}
-            />
-            {uploading && (
-              <p className="text-sm text-muted-foreground">Uploading...</p>
-            )}
-          </div>
+                {isSubmitting ? "Updating..." : "Update Profile"}
+              </Button>
 
-          {/* Name Input */}
-          <div className="space-y-2">
-            <Label htmlFor="name">Display Name</Label>
-            <Input
-              id="name"
-              placeholder="Your display name"
-              {...register("name")}
-            />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name.message}</p>
-            )}
+              {/* Delete Account Button */}
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full"
+                onClick={handleDeleteAccount}
+              >
+                Delete Account
+              </Button>
+            </form>
           </div>
-
-          {/* Gender Selection */}
-          <div className="space-y-2">
-            <Label>Gender</Label>
-            <RadioGroup
-              onValueChange={(value) => setValue("gender", value as "male" | "female")}
-              defaultValue={user?.gender}
-              className="flex gap-6"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="male" id="male" />
-                <Label htmlFor="male">Male</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="female" id="female" />
-                <Label htmlFor="female">Female</Label>
-              </div>
-            </RadioGroup>
-            {errors.gender && (
-              <p className="text-sm text-destructive">{errors.gender.message}</p>
-            )}
-          </div>
-
-          {/* Date of Birth */}
-          <div className="space-y-2">
-            <Label>Date of Birth</Label>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="DD"
-                  maxLength={2}
-                  className="text-center"
-                  {...register("dobDay")}
-                />
-              </div>
-              <div className="flex-1">
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="MM"
-                  maxLength={2}
-                  className="text-center"
-                  {...register("dobMonth")}
-                />
-              </div>
-              <div className="flex-[1.5]">
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="YYYY"
-                  maxLength={4}
-                  className="text-center"
-                  {...register("dobYear")}
-                />
-              </div>
-            </div>
-            {(errors.dobDay || errors.dobMonth || errors.dobYear) && (
-              <p className="text-sm text-destructive">
-                {errors.dobDay?.message || errors.dobMonth?.message || errors.dobYear?.message}
-              </p>
-            )}
-          </div>
-
-          {/* Bio */}
-          <div className="space-y-2">
-            <Label htmlFor="bio">Bio</Label>
-            <Textarea
-              id="bio"
-              placeholder="Tell people about yourself..."
-              className="resize-none h-24"
-              maxLength={160}
-              {...register("bio")}
-            />
-            <p className="text-xs text-muted-foreground text-right">
-              {watchedFields.bio?.length || 0}/160 characters
-            </p>
-            {errors.bio && (
-              <p className="text-sm text-destructive">{errors.bio.message}</p>
-            )}
-          </div>
-
-          {/* Email (Read-only) */}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={user?.email || ''}
-              disabled
-              className="bg-muted"
-            />
-            <p className="text-xs text-muted-foreground">
-              Email cannot be changed
-            </p>
-          </div>
-
-          {/* Submit Button */}
-          <Button 
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Updating..." : "Update Profile"}
-          </Button>
-        </form>
+        </div>
       </div>
     </div>
   )

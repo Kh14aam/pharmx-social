@@ -1,8 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { useState } from "react"
 import { Switch } from "@/components/ui/switch"
 import {
   ChevronRight,
@@ -17,9 +15,7 @@ import {
   Moon,
   LogOut,
   Volume2,
-  Palette,
-  Camera,
-  Loader2
+  Palette
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -71,55 +67,12 @@ const settingsItems = [
   }
 ]
 
-interface UserProfile {
-  name: string
-  email: string
-  avatar: string | null
-  isPremium: boolean
-}
-
 export default function SettingsPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [darkMode, setDarkMode] = useState(false)
   const [notifications, setNotifications] = useState(true)
   const [soundEffects, setSoundEffects] = useState(true)
-  const [user, setUser] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetchUserProfile()
-  }, [])
-
-  const fetchUserProfile = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const data = await apiClient.profile.get()
-      
-      // Transform the API response to match our UserProfile interface
-      setUser({
-        name: data.username || data.name || 'User',
-        email: data.email || 'No email provided',
-        avatar: data.avatar_url || data.profile_picture_url || null,
-        isPremium: data.is_premium || false
-      })
-    } catch (err) {
-      console.error('Error fetching profile:', err)
-      setError('Failed to load profile data')
-      // Set a fallback user for development
-      setUser({
-        name: 'User',
-        email: 'user@example.com',
-        avatar: null,
-        isPremium: false
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSignOut = async () => {
     try {
@@ -147,10 +100,6 @@ export default function SettingsPage() {
   //   alert("💳 Upgrade to Premium\n\nUnlock unlimited connections for £5/month")
   // }
 
-  const handleProfileEdit = () => {
-    router.push("/settings/profile")
-  }
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -165,69 +114,6 @@ export default function SettingsPage() {
       </div>
 
       <div className="max-w-2xl mx-auto">
-        {/* Profile Section */}
-        <div className="px-4 py-6">
-          {loading ? (
-            // Loading state
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : error ? (
-            // Error state
-            <div className="text-center py-8">
-              <p className="text-sm text-muted-foreground mb-4">{error}</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={fetchUserProfile}
-              >
-                Try Again
-              </Button>
-            </div>
-          ) : user ? (
-            // User data loaded
-            <>
-              <div className="flex items-center space-x-4">
-                <div className="relative">
-                  <Avatar className="h-20 w-20">
-                    <AvatarImage src={user.avatar || undefined} />
-                    <AvatarFallback>
-                      {user.name
-                        .split(' ')
-                        .map(n => n[0])
-                        .join('')
-                        .toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <button 
-                    onClick={handleProfileEdit}
-                    className="absolute bottom-0 right-0 p-1.5 bg-primary rounded-full text-primary-foreground"
-                  >
-                    <Camera className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold">{user.name}</h2>
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  className="rounded-xl"
-                  onClick={() => router.push("/app/users")}
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <rect x="3" y="3" width="7" height="7" strokeWidth="1.5" />
-                    <rect x="14" y="3" width="7" height="7" strokeWidth="1.5" />
-                    <rect x="3" y="14" width="7" height="7" strokeWidth="1.5" />
-                    <rect x="14" y="14" width="7" height="7" strokeWidth="1.5" />
-                  </svg>
-                </Button>
-              </div>
-            </>
-          ) : null}
-        </div>
-
         {/* Settings List */}
         <div className="px-4">
           <div className="space-y-1">
