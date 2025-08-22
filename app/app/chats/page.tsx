@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -12,14 +12,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Phone, Send, Check, CheckCheck, MessageSquare,
-  ArrowLeft, MoreVertical, Paperclip, Smile,
+  Send, Check, CheckCheck, MessageSquare,
+  ArrowLeft, MoreVertical, Phone, Paperclip, Smile,
   Search, Filter
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useSearchParams } from "next/navigation"
 
 // Mock data
-const mockChatRequests = [
+type ChatRequest = {
+  id: string
+  from: string
+  avatar: string | null
+  note: string
+  time: string
+}
+
+const defaultChatRequests: ChatRequest[] = [
   {
     id: "1",
     from: "Alex Martinez",
@@ -109,13 +118,28 @@ const mockMessages = [
 export default function ChatsPage() {
   const [selectedChat, setSelectedChat] = useState<string | null>(null)
   const [message, setMessage] = useState("")
+  const [chatRequests, setChatRequests] = useState<ChatRequest[]>(defaultChatRequests)
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const stored: ChatRequest[] = JSON.parse(localStorage.getItem("chatRequests") || "[]")
+    if (stored.length) {
+      setChatRequests(prev => [...prev, ...stored])
+    }
+  }, [])
 
   const handleAcceptRequest = (id: string) => {
-    alert(`Chat request from ${mockChatRequests.find(r => r.id === id)?.from} accepted!`)
+    alert("Chat request accepted!")
+    setChatRequests(prev => prev.filter(r => r.id !== id))
+    const stored: ChatRequest[] = JSON.parse(localStorage.getItem("chatRequests") || "[]")
+    localStorage.setItem("chatRequests", JSON.stringify(stored.filter((r) => r.id !== id)))
   }
 
   const handleDeclineRequest = (id: string) => {
-    alert(`Chat request from ${mockChatRequests.find(r => r.id === id)?.from} declined.`)
+    alert("Chat request declined.")
+    setChatRequests(prev => prev.filter(r => r.id !== id))
+    const stored: ChatRequest[] = JSON.parse(localStorage.getItem("chatRequests") || "[]")
+    localStorage.setItem("chatRequests", JSON.stringify(stored.filter((r) => r.id !== id)))
   }
 
   const handleSendMessage = () => {
@@ -140,12 +164,13 @@ export default function ChatsPage() {
   // Mobile view: show chat list or conversation
   // Desktop view: show both side by side
   const isChatSelected = selectedChat !== null
+  const defaultTab = searchParams.get("tab") || "chats"
 
   return (
     <div className="h-full flex bg-background">
       {/* Chat List - hidden on mobile when chat is selected */}
       <div className={`${isChatSelected ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-[380px] border-r bg-muted/30`}>
-        <Tabs defaultValue="chats" className="flex-1 flex flex-col">
+        <Tabs defaultValue={defaultTab} className="flex-1 flex flex-col">
           <div className="p-4 space-y-3 border-b bg-background">
             {/* Search Bar */}
             <div className="relative">
@@ -171,9 +196,9 @@ export default function ChatsPage() {
               </TabsTrigger>
               <TabsTrigger value="requests" className="data-[state=active]:bg-background">
                 Requests
-                {mockChatRequests.length > 0 && (
+                {chatRequests.length > 0 && (
                   <div className="ml-2 h-5 w-5 bg-orange-500 text-white rounded-full text-xs flex items-center justify-center">
-                    {mockChatRequests.length}
+                    {chatRequests.length}
                   </div>
                 )}
               </TabsTrigger>
@@ -228,7 +253,7 @@ export default function ChatsPage() {
           </TabsContent>
 
           <TabsContent value="requests" className="flex-1 overflow-y-auto m-0 p-4 space-y-3">
-            {mockChatRequests.map((request) => (
+            {chatRequests.map((request) => (
               <Card key={request.id} className="p-4 bg-gradient-to-r from-orange-50 to-orange-100/50 dark:from-orange-950/20 dark:to-orange-900/10 border-orange-200 dark:border-orange-800">
                 <div className="flex items-start space-x-3">
                   <Avatar className="h-11 w-11 ring-2 ring-orange-200 dark:ring-orange-800">
