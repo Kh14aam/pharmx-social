@@ -10,7 +10,7 @@ import { SignalingClient } from "@/lib/voice/signaling"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
 
-type VoiceState = "idle" | "searching" | "connecting" | "in_call" | "deciding" | "waiting_decision"
+type VoiceState = "idle" | "searching" | "incoming_call" | "connecting" | "in_call" | "deciding" | "waiting_decision"
 
 export default function VoicePage() {
   const { toast } = useToast()
@@ -116,8 +116,12 @@ export default function VoicePage() {
         console.log(`[Voice] Paired as ${role} for call ${callId}`, partner)
         setCallId(callId)
         setPartner(partner || null)
-        setState("connecting")
-        await setupWebRTC(role)
+        
+        // Show incoming call preview
+        setState("incoming_call")
+        
+        // Store role for later use
+        signalingRef.current!.role = role
       })
 
       signaling.on('onOffer', async (sdp) => {
@@ -193,11 +197,33 @@ export default function VoicePage() {
 
       signaling.on('onError', (code, message) => {
         console.error(`[Voice] Error ${code}: ${message}`)
-        toast({
-          title: "Connection error",
-          description: message,
-          variant: "destructive",
-        })
+        
+        // Handle specific errors gracefully
+        if (code === 'ALREADY_CONNECTED') {
+          // Silently reconnect, don't show error to user
+          console.log('[Voice] Handling reconnection gracefully')
+          return
+        }
+        
+        // Only show critical errors to user
+        if (code === 'AUTH_FAILED') {
+          toast({
+            title: "Authentication required",
+            description: "Please sign in to use voice chat",
+            variant: "destructive",
+          })
+          router.push('/login')
+        } else if (state === "searching") {
+          // If error during search, silently retry
+          console.log('[Voice] Error during search, retrying...')
+          setTimeout(() => {
+            if (signalingRef.current && state === "searching") {
+              signalingRef.current.connect()
+            }
+          }, 2000)
+          return
+        }
+        
         cleanup()
         setState("idle")
       })
@@ -324,6 +350,25 @@ export default function VoicePage() {
     setState("waiting_decision")
   }
 
+  // Accept incoming call
+  const acceptCall = async () => {
+    setState("connecting")
+    const role = (signalingRef.current as any)?.role || 'answerer'
+    await setupWebRTC(role)
+  }
+
+  // Decline incoming call
+  const declineCall = () => {
+    cleanup()
+    setState("idle")
+    toast({
+      title: "Call declined",
+      description: "Looking for someone else...",
+    })
+    // Optionally, auto-restart search
+    setTimeout(() => startFindingVoice(), 1000)
+  }
+
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-8rem)] px-4">
       <audio ref={remoteAudioRef} autoPlay playsInline />
@@ -376,6 +421,54 @@ export default function VoicePage() {
           >
             Cancel
           </Button>
+        </Card>
+      )}
+
+      {/* Incoming call preview */}
+      {state === "incoming_call" && partner && (
+        <Card className="w-full max-w-md p-8 text-center space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div className="relative">
+                <Avatar className="h-24 w-24 mx-auto">
+                  <AvatarImage src={partner.avatar} alt={partner.name} />
+                  <AvatarFallback className="text-2xl">
+                    {partner.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
+                  <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium animate-pulse">
+                    Incoming Call
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xl font-semibold">{partner.name}</h3>
+                <p className="text-sm text-muted-foreground">wants to voice chat with you</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex space-x-4">
+            <Button
+              variant="destructive"
+              size="lg"
+              className="flex-1"
+              onClick={declineCall}
+            >
+              <X className="mr-2 h-5 w-5" />
+              Decline
+            </Button>
+            <Button
+              variant="default"
+              size="lg"
+              className="flex-1 bg-green-600 hover:bg-green-700"
+              onClick={acceptCall}
+            >
+              <Phone className="mr-2 h-5 w-5" />
+              Accept
+            </Button>
+          </div>
         </Card>
       )}
 

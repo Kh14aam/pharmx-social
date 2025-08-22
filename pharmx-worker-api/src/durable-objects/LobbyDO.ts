@@ -194,11 +194,39 @@ export class LobbyDO {
       return
     }
 
-    // Check if user already connected
+    // Check if user already connected - handle gracefully
     if (this.users.has(userId)) {
-      this.sendMessage(ws, { type: 'error', code: 'ALREADY_CONNECTED', message: 'User already connected' })
-      ws.close(1008, 'Already connected')
-      return
+      console.log(`[LobbyDO] User ${userId} already connected, replacing old connection`)
+      const existingUser = this.users.get(userId)!
+      
+      // Clean up old connection
+      try {
+        existingUser.ws.close(1000, 'New connection established')
+      } catch (e) {
+        console.log('[LobbyDO] Old connection already closed')
+      }
+      
+      // If user was in queue, remove them
+      const queueIndex = this.queue.indexOf(userId)
+      if (queueIndex !== -1) {
+        this.queue.splice(queueIndex, 1)
+      }
+      
+      // If user had a partner, handle disconnection
+      if (existingUser.partner) {
+        const partner = this.users.get(existingUser.partner)
+        if (partner) {
+          partner.partner = undefined
+          partner.state = 'queued'
+          partner.role = undefined
+          partner.callId = undefined
+          partner.ready = false
+          if (!this.queue.includes(partner.id)) {
+            this.queue.push(partner.id)
+          }
+          this.sendMessage(partner.ws, { type: 'status', state: 'queued' })
+        }
+      }
     }
 
     // Add user to system
@@ -461,17 +489,25 @@ export class LobbyDO {
     if (bothStay) {
       // Create chat thread
       try {
-        const chatId = uuidv4()
+        // Check if chat already exists between these users
+        const existing = await this.env.DB.prepare(
+          `SELECT * FROM chats 
+           WHERE (user1_id = ? AND user2_id = ?) 
+           OR (user1_id = ? AND user2_id = ?)`
+        ).bind(userAId, userBId, userBId, userAId).first()
         
-        // Create chat
-        await this.env.DB.prepare(
-          'INSERT INTO chats (id) VALUES (?)'
-        ).bind(chatId).run()
-
-        // Add participants
-        await this.env.DB.prepare(
-          'INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?), (?, ?)'
-        ).bind(chatId, userAId, chatId, userBId).run()
+        if (!existing) {
+          // Create new chat
+          const chatId = uuidv4()
+          await this.env.DB.prepare(
+            `INSERT INTO chats (id, user1_id, user2_id, created_at)
+             VALUES (?, ?, ?, datetime('now'))`
+          ).bind(chatId, userAId, userBId).run()
+          
+          console.log(`[LobbyDO] Created chat ${chatId} between ${userAId} and ${userBId}`)
+        } else {
+          console.log(`[LobbyDO] Chat already exists between ${userAId} and ${userBId}`)
+        }
 
         // Send success result
         this.sendMessage(userA.ws, { type: 'decision-result', result: 'stayinchat' })
