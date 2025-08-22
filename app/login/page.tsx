@@ -3,21 +3,18 @@
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import { useAuth0 } from '@auth0/auth0-react'
 
 export default function LoginPage() {
   const [mounted, setMounted] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const { loginWithRedirect, isLoading } = useAuth0()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
   const handleGoogleLogin = () => {
-    setIsLoading(true)
-    
-    // Redirect to Worker API which handles Auth0 authentication
-    // The Worker will handle the Auth0 flow and redirect back with tokens
-    window.location.href = 'https://pharmx-api.kasimhussain333.workers.dev/api/v1/auth/login'
+    loginWithRedirect()
   }
 
   if (!mounted) {

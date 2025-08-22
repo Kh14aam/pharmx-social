@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { Phone, PhoneOff, Mic, MicOff, Loader2, Heart, X, Clock } from "lucide-react"
+import { Phone, PhoneOff, Mic, MicOff, Loader2, Heart, X, Clock, Volume2, VolumeX } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { SignalingClient, SignalingEventType } from "@/lib/voice/signaling"
 import { useRouter } from "next/navigation"
@@ -33,6 +33,7 @@ export default function VoicePage() {
   const router = useRouter()
   const [state, setState] = useState<VoiceState>("idle")
   const [isMuted, setIsMuted] = useState(false)
+  const [isLoudSpeaker, setIsLoudSpeaker] = useState(true)
   const [remainingSeconds, setRemainingSeconds] = useState(1200) // 20 minutes
   const [, setCallId] = useState<string | null>(null)
   const [decision, setDecision] = useState<"stay" | "skip" | null>(null)
@@ -453,6 +454,18 @@ export default function VoicePage() {
     }
   }
 
+  // Toggle loud speaker
+  const toggleLoudSpeaker = () => {
+    if (remoteAudioRef.current) {
+      // In a real app, this would control the audio output device
+      // For now, we'll just toggle the state
+      setIsLoudSpeaker(!isLoudSpeaker)
+      
+      // You could also implement actual audio routing here
+      // For example, using the Web Audio API to route audio to different outputs
+    }
+  }
+
   // Handle decision
   const handleDecision = (choice: 'stay' | 'skip') => {
     setDecision(choice)
@@ -653,6 +666,15 @@ export default function VoicePage() {
                 onClick={toggleMute}
               >
                 {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+              </Button>
+              
+              <Button
+                size="icon"
+                variant={isLoudSpeaker ? "default" : "secondary"}
+                className="h-12 w-12 rounded-full"
+                onClick={toggleLoudSpeaker}
+              >
+                {isLoudSpeaker ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
               </Button>
             </div>
           </div>

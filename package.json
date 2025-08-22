@@ -12,6 +12,7 @@
   "dependencies": {
     "@auth/core": "^0.40.0",
     "@auth/prisma-adapter": "^2.10.0",
+    "@auth0/auth0-react": "^2.4.0",
     "@auth0/nextjs-auth0": "^4.9.0",
     "@cloudflare/workers-types": "^4.20250821.0",
     "@hookform/resolvers": "^5.2.1",
@@ -62,8 +63,8 @@
   "devDependencies": {
     "@cloudflare/next-on-pages": "^1.13.14",
     "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^18.3.24",
+    "@types/react-dom": "^18.3.7",
     "drizzle-kit": "^0.31.4",
     "eslint": "^8",
     "eslint-config-next": "14.2.32",

@@ -1,5 +1,6 @@
 'use client'
 
+import { Auth0Provider as Auth0ProviderSDK } from '@auth0/auth0-react'
 import { createContext, useContext, useEffect, useState } from 'react'
 
 interface User {
@@ -21,31 +22,49 @@ const UserContext = createContext<UserContextType>({
   error: null,
 })
 
-export function Auth0Provider({
+export function Auth0ProviderWrapper({
   children,
 }: {
   children: React.ReactNode
 }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error] = useState<Error | null>(null)
+  const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    // In a production app, you would:
-    // 1. Check for stored auth tokens in localStorage/cookies
-    // 2. Validate them with your Worker API
-    // 3. Fetch user profile from Worker API
-    
-    // For now, check if user data is in localStorage (mock)
-    const storedUser = localStorage.getItem('pharmx_user')
-    if (storedUser) {
+    // Check for existing session on app load
+    const checkExistingSession = async () => {
       try {
-        setUser(JSON.parse(storedUser))
-      } catch (e) {
-        console.error('Failed to parse user data', e)
+        const token = localStorage.getItem('pharmx_token')
+        const sessionId = localStorage.getItem('pharmx_session')
+        
+        if (token && sessionId) {
+          // Verify token with backend
+          const response = await fetch('/api/auth/verify', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'X-Session-ID': sessionId
+            }
+          })
+          
+          if (response.ok) {
+            const userData = await response.json()
+            setUser(userData.user)
+          } else {
+            // Clear invalid session
+            localStorage.removeItem('pharmx_token')
+            localStorage.removeItem('pharmx_session')
+          }
+        }
+      } catch (err) {
+        console.error('Session check failed:', err)
+        setError(err as Error)
+      } finally {
+        setIsLoading(false)
       }
     }
-    setIsLoading(false)
+
+    checkExistingSession()
   }, [])
 
   return (
@@ -57,4 +76,34 @@ export function Auth0Provider({
 
 export function useUser() {
   return useContext(UserContext)
+}
+
+// Main Auth0 Provider Component
+export function Auth0Provider({ children }: { children: React.ReactNode }) {
+  const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN
+  const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID
+  const audience = process.env.NEXT_PUBLIC_AUTH0_AUDIENCE
+
+  if (!domain || !clientId) {
+    console.error('Auth0 configuration missing. Check your environment variables.')
+    return <div>Configuration Error</div>
+  }
+
+  return (
+    <Auth0ProviderSDK
+      domain={domain}
+      clientId={clientId}
+      authorizationParams={{
+        redirect_uri: typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : '',
+        audience: audience,
+        scope: 'openid profile email'
+      }}
+      cacheLocation="localstorage"
+      useRefreshTokens={true}
+    >
+      <Auth0ProviderWrapper>
+        {children}
+      </Auth0ProviderWrapper>
+    </Auth0ProviderSDK>
+  )
 }
