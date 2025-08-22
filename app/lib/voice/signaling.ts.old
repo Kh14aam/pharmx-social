@@ -1,14 +1,12 @@
-export type SignalingEventType = 'onStateChange' | 'onPaired' | 'onOffer' | 'onAnswer' | 'onIceCandidate' | 'onCallStarted' | 'onTick' | 'onCallEnded' | 'onDecisionWaiting' | 'onDecisionResult' | 'onBothAccepted' | 'onError'
-
-type SignalingState = 'idle' | 'connecting' | 'connected' | 'searching' | 'paired' | 'in_call' | 'deciding'
-
-type SignalingCallback = (...args: unknown[]) => void | Promise<void>
+export type SignalingState = 'idle' | 'connecting' | 'connected' | 'searching' | 'paired' | 'in_call' | 'deciding'
+export type SignalingEvent = 'onStateChange' | 'onPaired' | 'onOffer' | 'onAnswer' | 'onIceCandidate' | 'onCallStarted' | 'onTick' | 'onCallEnded' | 'onDecisionWaiting' | 'onDecisionResult' | 'onBothAccepted' | 'onError'
+export type SignalingCallback = (...args: unknown[]) => void | Promise<void>
 
 export class SignalingClient {
   private ws: WebSocket | null = null
   private url: string
   private token: string
-  private events: Map<SignalingEventType, SignalingCallback[]> = new Map()
+  private events: Map<SignalingEvent, SignalingCallback[]> = new Map()
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectTimeout: NodeJS.Timeout | null = null
@@ -203,21 +201,21 @@ export class SignalingClient {
     return this.state
   }
 
-  on(eventType: SignalingEventType, callback: SignalingCallback) {
-    if (!this.events.has(eventType)) {
-      this.events.set(eventType, [])
+  on(event: SignalingEvent, callback: SignalingCallback) {
+    if (!this.events.has(event)) {
+      this.events.set(event, [])
     }
-    this.events.get(eventType)!.push(callback)
+    this.events.get(event)!.push(callback)
   }
 
-  private emit(eventType: SignalingEventType, ...args: unknown[]) {
-    const callbacks = this.events.get(eventType)
+  private emit(event: SignalingEvent, ...args: unknown[]) {
+    const callbacks = this.events.get(event)
     if (callbacks) {
       callbacks.forEach(callback => {
         try {
           callback(...args)
         } catch (err) {
-          console.error(`[SignalingClient] Error in event handler for ${eventType}:`, err)
+          console.error(`[SignalingClient] Error in event handler for ${event}:`, err)
         }
       })
     }

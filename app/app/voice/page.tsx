@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Phone, PhoneOff, Mic, MicOff, Loader2, Heart, X, Clock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { SignalingClient } from "@/lib/voice/signaling"
+import { SignalingClient, SignalingEventType } from "@/lib/voice/signaling"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
 
@@ -128,11 +128,14 @@ export default function VoicePage() {
       signalingRef.current = signaling
 
       // Set up signaling event handlers
-      signaling.on('onStateChange', (signalingState) => {
+      // Type cast events to align with SignalingEventType
+      const evt = (eventName: SignalingEventType) => eventName
+
+      signaling.on(evt('onStateChange'), (signalingState: string) => {
         console.log('[Voice] Signaling state:', signalingState)
       })
 
-      signaling.on('onPaired', async (role: 'offerer' | 'answerer', callId: string, partner?: { name: string; avatar?: string; id: string }) => {
+      signaling.on(evt('onPaired'), async (role: 'offerer' | 'answerer', callId: string, partner?: { name: string; avatar?: string; id: string }) => {
         console.log(`[Voice] Paired as ${role} for call ${callId}`, partner)
         setCallId(callId)
         setPartner(partner || null)
@@ -144,13 +147,13 @@ export default function VoicePage() {
         signalingRef.current!.role = role
       })
 
-      signaling.on('onBothAccepted', async () => {
+      signaling.on(evt('onBothAccepted'), async () => {
         console.log('[Voice] Both users accepted, setting up WebRTC')
         const role = signalingRef.current?.role || 'answerer'
         await setupWebRTC(role)
       })
 
-      signaling.on('onOffer', async (sdp) => {
+      signaling.on(evt('onOffer'), async (sdp) => {
         if (pcRef.current) {
           await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp))
           const answer = await pcRef.current.createAnswer()
@@ -159,19 +162,19 @@ export default function VoicePage() {
         }
       })
 
-      signaling.on('onAnswer', async (sdp) => {
+      signaling.on(evt('onAnswer'), async (sdp) => {
         if (pcRef.current) {
           await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp))
         }
       })
 
-      signaling.on('onIceCandidate', async (candidate) => {
+      signaling.on(evt('onIceCandidate'), async (candidate) => {
         if (pcRef.current) {
           await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate))
         }
       })
 
-      signaling.on('onCallStarted', (seconds) => {
+      signaling.on(evt('onCallStarted'), (seconds) => {
         setState("in_call")
         setRemainingSeconds(seconds)
         
@@ -186,11 +189,11 @@ export default function VoicePage() {
         }, 1000)
       })
 
-      signaling.on('onTick', (seconds) => {
+      signaling.on(evt('onTick'), (seconds) => {
         setRemainingSeconds(seconds)
       })
 
-      signaling.on('onCallEnded', (reason) => {
+      signaling.on(evt('onCallEnded'), (reason) => {
         console.log(`[Voice] Call ended: ${reason}`)
         if (countdownIntervalRef.current) {
           clearInterval(countdownIntervalRef.current)
@@ -199,11 +202,11 @@ export default function VoicePage() {
         setState("deciding")
       })
 
-      signaling.on('onDecisionWaiting', () => {
+      signaling.on(evt('onDecisionWaiting'), () => {
         setState("waiting_decision")
       })
 
-      signaling.on('onDecisionResult', (result) => {
+      signaling.on(evt('onDecisionResult'), (result) => {
         if (result === 'stayinchat') {
           toast({
             title: "Chat created",
@@ -221,7 +224,7 @@ export default function VoicePage() {
         setState("idle")
       })
 
-      signaling.on('onError', (code, message) => {
+      signaling.on(evt('onError'), (code, message) => {
         console.error(`[Voice] Error ${code}: ${message}`)
         
         // Handle specific errors gracefully
