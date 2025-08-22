@@ -10,6 +10,13 @@ import { SignalingClient, SignalingEventType } from "@/lib/voice/signaling"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
 
+const withApiBase = (url?: string) => {
+  if (!url) return ""
+  if (url.startsWith("http")) return url
+  const base = process.env.NEXT_PUBLIC_API_URL || ""
+  return `${base}${url}`
+}
+
 type VoiceState = "idle" | "searching" | "incoming_call" | "connecting" | "in_call" | "deciding" | "waiting_decision"
 
 // Engaging waiting messages that rotate during search
@@ -184,7 +191,7 @@ export default function VoicePage() {
           console.log(`[Voice] Paired as ${role} for call ${callId}`, partner)
           setCallId(callId)
 
-          if (!partner?.name || !partner?.avatar) {
+          if (!partner?.name) {
             toast({
               title: 'Profile required',
               description: 'Could not load partner profile',
@@ -194,7 +201,8 @@ export default function VoicePage() {
             return
           }
 
-          setPartner(partner)
+          // Ensure avatar URL is absolute; UI will show fallback if still missing
+          setPartner({ ...partner, avatar: withApiBase(partner.avatar) })
 
           if (role === 'answerer') {
             // Show accept/decline for the receiver
