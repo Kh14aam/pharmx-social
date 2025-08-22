@@ -51,14 +51,37 @@ export class SignalingClient extends EventEmitter {
     this.token = token
   }
 
-  // Strongly-typed EventEmitter interface
-  on<E extends keyof SignalingEvents>(event: E, listener: SignalingEvents[E]): this {
-    // Bridge to base EventEmitter with proper typing
-    return super.on(event as unknown as string, (...args: any[]) => (listener as any)(...args)) as this
+  // Strongly-typed EventEmitter interface without `any`
+  // Overloads for `on`
+  on(event: 'onStateChange', listener: SignalingEvents['onStateChange']): this
+  on(event: 'onPaired', listener: SignalingEvents['onPaired']): this
+  on(event: 'onOffer', listener: SignalingEvents['onOffer']): this
+  on(event: 'onAnswer', listener: SignalingEvents['onAnswer']): this
+  on(event: 'onIceCandidate', listener: SignalingEvents['onIceCandidate']): this
+  on(event: 'onCallStarted', listener: SignalingEvents['onCallStarted']): this
+  on(event: 'onTick', listener: SignalingEvents['onTick']): this
+  on(event: 'onCallEnded', listener: SignalingEvents['onCallEnded']): this
+  on(event: 'onDecisionWaiting', listener: SignalingEvents['onDecisionWaiting']): this
+  on(event: 'onDecisionResult', listener: SignalingEvents['onDecisionResult']): this
+  on(event: 'onError', listener: SignalingEvents['onError']): this
+  on(event: string, listener: (...args: unknown[]) => void): this {
+    return super.on(event, listener) as this
   }
 
-  emit<E extends keyof SignalingEvents>(event: E, ...args: Parameters<SignalingEvents[E]>): boolean {
-    return super.emit(event as unknown as string, ...(args as unknown as any[]))
+  // Overloads for `emit`
+  emit(event: 'onStateChange', state: Parameters<SignalingEvents['onStateChange']>[0]): boolean
+  emit(event: 'onPaired', role: Parameters<SignalingEvents['onPaired']>[0], callId: Parameters<SignalingEvents['onPaired']>[1], partner?: Parameters<SignalingEvents['onPaired']>[2]): boolean
+  emit(event: 'onOffer', sdp: Parameters<SignalingEvents['onOffer']>[0]): boolean
+  emit(event: 'onAnswer', sdp: Parameters<SignalingEvents['onAnswer']>[0]): boolean
+  emit(event: 'onIceCandidate', candidate: Parameters<SignalingEvents['onIceCandidate']>[0]): boolean
+  emit(event: 'onCallStarted', remainingSec: Parameters<SignalingEvents['onCallStarted']>[0]): boolean
+  emit(event: 'onTick', remainingSec: Parameters<SignalingEvents['onTick']>[0]): boolean
+  emit(event: 'onCallEnded', reason: Parameters<SignalingEvents['onCallEnded']>[0]): boolean
+  emit(event: 'onDecisionWaiting'): boolean
+  emit(event: 'onDecisionResult', result: Parameters<SignalingEvents['onDecisionResult']>[0]): boolean
+  emit(event: 'onError', code: Parameters<SignalingEvents['onError']>[0], message: Parameters<SignalingEvents['onError']>[1]): boolean
+  emit(event: string, ...args: unknown[]): boolean {
+    return super.emit(event, ...args)
   }
 
   connect() {
