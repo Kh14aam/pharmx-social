@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { MessageSquare, Phone, Heart, MapPin } from "lucide-react"
+import { MessageSquare } from "lucide-react"
 
 // Mock data with single profile images
 const mockUsers = [
@@ -76,118 +75,66 @@ const mockUsers = [
   }
 ]
 
+type User = (typeof mockUsers)[number]
+
 export default function UsersPage() {
   const router = useRouter()
-  const [likedUsers, setLikedUsers] = useState<Set<string>>(new Set())
 
-  const handleMessage = (userId: string, e: React.MouseEvent) => {
+  const handleMessage = (user: User, e: React.MouseEvent) => {
     e.stopPropagation()
-    router.push("/app/chats")
-  }
-
-  const handleCall = (userId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    router.push("/app/voice")
-  }
-
-  const handleLike = (userId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setLikedUsers(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(userId)) {
-        newSet.delete(userId)
-      } else {
-        newSet.add(userId)
-      }
-      return newSet
-    })
+    const note = prompt(`Send a message to ${user.name}:`)
+    if (note && note.trim()) {
+      const stored = JSON.parse(localStorage.getItem("chatRequests") || "[]")
+      stored.push({
+        id: Date.now().toString(),
+        from: user.name,
+        avatar: user.image,
+        note,
+        time: "Just now",
+      })
+      localStorage.setItem("chatRequests", JSON.stringify(stored))
+      router.push("/app/chats?tab=requests")
+    }
   }
 
   return (
     <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4">
       {/* User Grid - Picture Focused */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-        {mockUsers.map((user) => {
-          const isLiked = likedUsers.has(user.id)
-          
-          return (
-            <Card 
-              key={user.id} 
-              className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-0"
-            >
-              <div className="relative aspect-[3/4]">
-                {/* Main Image */}
-                <div 
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={{ 
-                    backgroundImage: `url(${user.image})`,
-                  }}
-                >
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80" />
-                </div>
-
-                {/* Verified Badge */}
-                {user.verified && (
-                  <div className="absolute top-2 right-2">
-                    <div className="bg-blue-500 text-white p-1 rounded-full">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  </div>
-                )}
-
-                {/* Like Button */}
-                <button
-                  onClick={(e) => handleLike(user.id, e)}
-                  className="absolute top-2 left-2 p-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
-                >
-                  <Heart 
-                    className={`w-5 h-5 transition-colors ${
-                      isLiked ? 'fill-red-500 text-red-500' : 'text-white'
-                    }`} 
-                  />
-                </button>
-
-                {/* User Info Overlay */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                  <div className="flex items-center gap-1 mb-1">
-                    <h3 className="font-bold text-lg">{user.name}</h3>
-                    <span className="text-sm opacity-90">{user.age}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-1 text-xs mb-2 opacity-90">
-                    <MapPin className="w-3 h-3" />
-                    <span>{user.location}</span>
-                  </div>
-
-                  <p className="text-xs line-clamp-2 opacity-90 mb-3">
-                    {user.bio}
-                  </p>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1 h-8 bg-white/20 backdrop-blur-sm hover:bg-white/30 border-0 text-white"
-                      onClick={(e) => handleMessage(user.id, e)}
-                    >
-                      <MessageSquare className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1 h-8 bg-primary hover:bg-primary/90 border-0"
-                      onClick={(e) => handleCall(user.id, e)}
-                    >
-                      <Phone className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
+        {mockUsers.map((user) => (
+          <Card
+            key={user.id}
+            className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-0"
+          >
+            <div className="relative aspect-[3/4]">
+              {/* Main Image */}
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{
+                  backgroundImage: `url(${user.image})`,
+                }}
+              >
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80" />
               </div>
-            </Card>
-          )
-        })}
+
+              {/* User Info & Message */}
+              <div className="absolute bottom-0 left-0 right-0 p-3 flex items-center justify-between text-white">
+                <div className="flex items-center gap-1">
+                  <h3 className="font-bold text-lg">{user.name}</h3>
+                  <span className="text-lg opacity-90">{user.age}</span>
+                </div>
+                <Button
+                  size="sm"
+                  className="h-8 w-8 bg-white/20 backdrop-blur-sm hover:bg-white/30 border-0 text-white"
+                  onClick={(e) => handleMessage(user, e)}
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
       </div>
 
     </div>
