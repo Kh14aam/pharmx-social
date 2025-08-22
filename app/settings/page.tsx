@@ -15,7 +15,7 @@ import {
   Shield, 
   HelpCircle, 
   Users,
-  CreditCard,
+  // CreditCard, // Removed - not used
   Moon,
   LogOut,
   Volume2,
@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 import { apiClient } from "@/lib/api-client"
 
 const settingsItems = [
@@ -95,6 +96,7 @@ interface UserProfile {
 
 export default function SettingsPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [darkMode, setDarkMode] = useState(false)
   const [notifications, setNotifications] = useState(true)
   const [soundEffects, setSoundEffects] = useState(true)
@@ -135,14 +137,31 @@ export default function SettingsPage() {
     }
   }
 
-  const handleSignOut = () => {
-    alert("Signing out...")
-    router.push("/")
+  const handleSignOut = async () => {
+    try {
+      // Clear authentication data
+      apiClient.clearAuth()
+      
+      toast({
+        title: "Signed out",
+        description: "You have been successfully signed out",
+      })
+      
+      // Redirect to login page
+      router.push('/login')
+    } catch (error) {
+      console.error('Sign out error:', error)
+      toast({
+        title: "Sign out failed",
+        description: "There was an error signing out",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleUpgrade = () => {
-    alert("💳 Upgrade to Premium\n\nUnlock unlimited connections for £5/month")
-  }
+  // const handleUpgrade = () => {
+  //   alert("💳 Upgrade to Premium\n\nUnlock unlimited connections for £5/month")
+  // }
 
   const handleProfileEdit = () => {
     router.push("/settings/profile")

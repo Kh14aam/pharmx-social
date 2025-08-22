@@ -303,7 +303,7 @@ export default function NotificationsSettingsPage() {
             <div>
               <h4 className="font-medium text-blue-900 dark:text-blue-100">About Notifications</h4>
               <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                We'll only send you notifications for important events. You can customize these settings anytime.
+                We&apos;ll only send you notifications for important events. You can customize these settings anytime.
               </p>
             </div>
           </div>

@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+// useRouter import removed - not used in this component
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+// Avatar components removed - not used in this component
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -42,7 +42,7 @@ interface UserProfile {
 }
 
 export default function AccountSettingsPage() {
-  const router = useRouter()
+  // const router = useRouter() // Removed - not used in this component
   const { toast } = useToast()
   const [avatarPreview, setAvatarPreview] = useState<string>("")
   const [uploading, setUploading] = useState(false)
@@ -63,6 +63,7 @@ export default function AccountSettingsPage() {
 
   useEffect(() => {
     fetchUserProfile()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchUserProfile = async () => {
