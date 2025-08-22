@@ -16,7 +16,7 @@ type VoiceState = "idle" | "searching" | "incoming_call" | "connecting" | "in_ca
 const waitingMessages = [
   "Looking for the perfect voice match for you :)",
   "Hang tight! Connecting you to someone new...",
-  "You're in line – we're working hard to find a connection :)",
+  "You're in line - we're working hard to find a connection :)",
   "Still searching... Thanks for your patience :)",
   "Almost there! A new voice chat partner is on the way :)",
 ]
@@ -82,6 +82,16 @@ export default function VoicePage() {
   // Start finding a voice
   const startFindingVoice = async () => {
     try {
+      // Check if running in a browser environment
+      if (typeof window === 'undefined' || !navigator.mediaDevices) {
+        toast({
+          title: "Browser not supported",
+          description: "Voice chat requires a modern browser with microphone support",
+          variant: "destructive",
+        })
+        return
+      }
+
       // Request microphone permission
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: { 
