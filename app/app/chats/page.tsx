@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -115,7 +115,7 @@ const mockMessages = [
   }
 ]
 
-export default function ChatsPage() {
+function ChatsPageContent() {
   const [selectedChat, setSelectedChat] = useState<string | null>(null)
   const [message, setMessage] = useState("")
   const [chatRequests, setChatRequests] = useState<ChatRequest[]>(defaultChatRequests)
@@ -454,5 +454,13 @@ export default function ChatsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ChatsPage() {
+  return (
+    <Suspense fallback={<div className="p-4">Loading...</div>}>
+      <ChatsPageContent />
+    </Suspense>
   )
 }
