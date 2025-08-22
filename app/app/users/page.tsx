@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { MessageSquare, Phone, Heart, MapPin } from "lucide-react"
@@ -76,16 +77,17 @@ const mockUsers = [
 ]
 
 export default function UsersPage() {
+  const router = useRouter()
   const [likedUsers, setLikedUsers] = useState<Set<string>>(new Set())
 
   const handleMessage = (userId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    alert("💳 Membership Required\n\nUpgrade to PharmX Premium for £5/month to message users directly.")
+    router.push("/app/chats")
   }
 
   const handleCall = (userId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    alert("💳 Membership Required\n\nUpgrade to PharmX Premium for £5/month to call users directly.")
+    router.push("/app/voice")
   }
 
   const handleLike = (userId: string, e: React.MouseEvent) => {
@@ -188,22 +190,6 @@ export default function UsersPage() {
         })}
       </div>
 
-      {/* Premium Prompt - More Subtle */}
-      <div className="mt-8 mx-2">
-        <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-          <div className="p-4 sm:p-6 text-center">
-            <h3 className="text-base sm:text-lg font-semibold mb-2">
-              Unlock Unlimited Connections
-            </h3>
-            <p className="text-xs sm:text-sm text-muted-foreground mb-4">
-              Message and call anyone directly for £5/month
-            </p>
-            <Button size="sm" className="bg-primary hover:bg-primary/90">
-              Get Premium
-            </Button>
-          </div>
-        </Card>
-      </div>
     </div>
   )
 }
