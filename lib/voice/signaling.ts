@@ -16,6 +16,8 @@ export type ServerMessage =
   | { type: 'call-started'; remainingSec: number }
   | { type: 'tick'; remainingSec: number }
   | { type: 'both-accepted' }
+  | { type: 'call-accepted' }
+  | { type: 'call-declined' }
   | { type: 'call-ended'; reason: 'duration' | 'hangup' | 'disconnect' | 'error' }
   | { type: 'decision-waiting' }
   | { type: 'decision-result'; result: 'stayinchat' | 'notadded' }
@@ -33,6 +35,7 @@ export interface SignalingEvents {
   onDecisionWaiting: () => void
   onDecisionResult: (result: 'stayinchat' | 'notadded') => void
   onBothAccepted: () => void
+  onCallDeclined: () => void
   onError: (code: string, message: string) => void
 }
 
@@ -209,7 +212,16 @@ export class SignalingClient {
       case 'both-accepted':
         this.events.onBothAccepted?.()
         break
-      
+
+      case 'call-accepted':
+        // Legacy server message name for both users accepting
+        this.events.onBothAccepted?.()
+        break
+
+      case 'call-declined':
+        this.events.onCallDeclined?.()
+        break
+
       case 'decision-waiting':
         this.events.onDecisionWaiting?.()
         break
