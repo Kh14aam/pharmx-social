@@ -9,6 +9,7 @@ interface User {
   callId?: string
   ready?: boolean
   decision?: 'stay' | 'skip'
+  acceptedCall?: boolean
   profile?: {
     name: string
     avatar?: string
@@ -27,6 +28,8 @@ interface Call {
 
 type ClientMessage = 
   | { type: 'join'; token: string }
+  | { type: 'accept' }
+  | { type: 'decline' }
   | { type: 'ready' }
   | { type: 'leave' }
   | { type: 'offer'; sdp: any }
@@ -145,6 +148,14 @@ export class LobbyDO {
         await this.handleJoin(ws, message.token)
         break
       
+      case 'accept':
+        if (userId) await this.handleAccept(userId)
+        break
+        
+      case 'decline':
+        if (userId) await this.handleDecline(userId)
+        break
+      
       case 'ready':
         if (userId) await this.handleReady(userId)
         break
@@ -229,19 +240,81 @@ export class LobbyDO {
       }
     }
 
-    // Add user to system
-    const user: User = {
-      id: userId,
-      ws,
-      state: 'queued'
-    }
-    this.users.set(userId, user)
-    this.queue.push(userId)
+  // Add user to system
+  const user: User = {
+    id: userId,
+    ws,
+    state: 'queued',
+    acceptedCall: false
+  }
+  this.users.set(userId, user)
+  this.queue.push(userId)
 
     // Send queued status
     this.sendMessage(ws, { type: 'status', state: 'queued' })
 
     // Try to pair if possible
+    await this.tryPair()
+  }
+
+  private async handleAccept(userId: string) {
+    const user = this.users.get(userId)
+    if (!user || user.state !== 'connecting' || !user.partner) return
+
+    user.acceptedCall = true
+    console.log(`[LobbyDO] User ${userId} accepted the call`)
+    
+    // Check if both users accepted
+    const partner = this.users.get(user.partner)
+    if (partner?.acceptedCall) {
+      // Both accepted, proceed with WebRTC setup
+      console.log('[LobbyDO] Both users accepted, proceeding with call')
+      user.state = 'connecting'
+      partner.state = 'connecting'
+      
+      // Signal users to start WebRTC connection
+      this.sendMessage(user.ws, { type: 'call-accepted' })
+      this.sendMessage(partner.ws, { type: 'call-accepted' })
+    }
+  }
+
+  private async handleDecline(userId: string) {
+    const user = this.users.get(userId)
+    if (!user || user.state !== 'connecting' || !user.partner) return
+
+    console.log(`[LobbyDO] User ${userId} declined the call`)
+    
+    const partner = this.users.get(user.partner)
+    if (partner) {
+      // Notify partner that call was declined
+      this.sendMessage(partner.ws, { type: 'call-declined' })
+      
+      // Reset partner and put them back in queue
+      partner.partner = undefined
+      partner.state = 'queued'
+      partner.role = undefined
+      partner.callId = undefined
+      partner.acceptedCall = false
+      partner.ready = false
+      this.queue.push(partner.id)
+      
+      // Send queued status to partner so they continue searching
+      this.sendMessage(partner.ws, { type: 'status', state: 'queued' })
+    }
+    
+    // Reset declining user and put them back in queue
+    user.partner = undefined
+    user.state = 'queued'
+    user.role = undefined
+    user.callId = undefined
+    user.acceptedCall = false
+    user.ready = false
+    this.queue.push(userId)
+    
+    // Send queued status to declining user
+    this.sendMessage(user.ws, { type: 'status', state: 'queued' })
+    
+    // Try to pair again with available users
     await this.tryPair()
   }
 
