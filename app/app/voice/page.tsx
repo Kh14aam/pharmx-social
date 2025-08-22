@@ -353,7 +353,7 @@ export default function VoicePage() {
   // Accept incoming call
   const acceptCall = async () => {
     setState("connecting")
-    const role = (signalingRef.current as any)?.role || 'answerer'
+    const role = signalingRef.current?.role || 'answerer'
     await setupWebRTC(role)
   }
 

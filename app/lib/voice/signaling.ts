@@ -44,6 +44,7 @@ export class SignalingClient extends TypedEmitter<SignalingEvents> {
   private reconnectTimer: NodeJS.Timeout | null = null
   private pingInterval: NodeJS.Timeout | null = null
   private state: 'disconnected' | 'connecting' | 'connected' | 'queued' | 'paired' = 'disconnected'
+  public role?: 'offerer' | 'answerer' // Add role property for storing the user's role
 
   constructor(url: string, token: string) {
     super()
