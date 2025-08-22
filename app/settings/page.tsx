@@ -4,15 +4,14 @@ import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { 
-  ChevronRight, 
-  Bookmark, 
-  FileText, 
-  User, 
-  MessageSquare, 
-  Bell, 
-  Shield, 
-  HelpCircle, 
+import {
+  ChevronRight,
+  FileText,
+  User,
+  MessageSquare,
+  Bell,
+  Shield,
+  HelpCircle,
   Users,
   // CreditCard, // Removed - not used
   Moon,
@@ -28,20 +27,6 @@ import { useToast } from "@/hooks/use-toast"
 import { apiClient } from "@/lib/api-client"
 
 const settingsItems = [
-  {
-    id: "saved",
-    icon: Bookmark,
-    label: "Saved Topics",
-    href: "/settings/saved",
-    badge: null
-  },
-  {
-    id: "notes",
-    icon: FileText,
-    label: "My Notes",
-    href: "/settings/notes",
-    badge: null
-  },
   {
     id: "account",
     icon: User,
