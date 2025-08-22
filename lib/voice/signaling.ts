@@ -5,10 +5,14 @@ export type SignalingState = 'disconnected' | 'connecting' | 'queued' | 'paired'
 export type ServerMessage =
   | {
       type: 'status'
-      state: 'queued' | 'paired'
-      role?: 'offerer' | 'answerer'
-      callId?: string
-      partner?: { name: string; avatar?: string; id: string }
+      state: 'queued'
+    }
+  | {
+      type: 'status'
+      state: 'paired'
+      role: 'offerer' | 'answerer'
+      callId: string
+      partner: { name: string; avatar: string; id: string }
     }
   | { type: 'offer'; sdp: RTCSessionDescriptionInit }
   | { type: 'answer'; sdp: RTCSessionDescriptionInit }
@@ -25,7 +29,7 @@ export type ServerMessage =
 
 export interface SignalingEvents {
   onStateChange: (state: SignalingState) => void
-  onPaired: (role: 'offerer' | 'answerer', callId: string, partner?: { name: string; avatar?: string; id: string }) => void
+  onPaired: (role: 'offerer' | 'answerer', callId: string, partner: { name: string; avatar: string; id: string }) => void
   onOffer: (sdp: RTCSessionDescriptionInit) => void
   onAnswer: (sdp: RTCSessionDescriptionInit) => void
   onIceCandidate: (candidate: RTCIceCandidateInit) => void
@@ -177,7 +181,7 @@ export class SignalingClient {
       case 'status':
         if (message.state === 'queued') {
           this.updateState('queued')
-        } else if (message.state === 'paired' && message.role && message.callId) {
+        } else if (message.state === 'paired') {
           this.updateState('paired')
           this.events.onPaired?.(message.role, message.callId, message.partner)
         }
