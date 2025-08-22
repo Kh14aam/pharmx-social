@@ -22,6 +22,26 @@ type ClientMessage =
   | { type: 'decision'; choice: 'stay' | 'skip' }
   | { type: 'ping' }
 
+
+interface SignalingEvents {
+  onStateChange: (state: 'disconnected' | 'connecting' | 'connected' | 'queued' | 'paired') => void;
+  onPaired: (role: 'offerer' | 'answerer', callId: string, partner?: { name: string; avatar?: string; id: string }) => void;
+  onOffer: (sdp: RTCSessionDescriptionInit) => void;
+  onAnswer: (sdp: RTCSessionDescriptionInit) => void;
+  onIceCandidate: (candidate: RTCIceCandidateInit) => void;
+  onCallStarted: (remainingSec: number) => void;
+  onTick: (remainingSec: number) => void;
+  onCallEnded: (reason: 'duration' | 'hangup' | 'disconnect' | 'error') => void;
+  onDecisionWaiting: () => void;
+  onDecisionResult: (result: 'stayinchat' | 'notadded') => void;
+  onError: (code: string, message: string) => void;
+}
+
+export declare interface SignalingClient {
+  on<E extends keyof SignalingEvents>(event: E, listener: SignalingEvents[E]): this;
+  emit<E extends keyof SignalingEvents>(event: E, ...args: Parameters<SignalingEvents[E]>): boolean;
+}
+
 export class SignalingClient extends EventEmitter {
   private ws: WebSocket | null = null
   private url: string
