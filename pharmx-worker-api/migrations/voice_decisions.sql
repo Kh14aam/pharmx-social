@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS voice_decisions (
+  id TEXT PRIMARY KEY,
+  call_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  choice TEXT NOT NULL,
+  decided_at TEXT DEFAULT CURRENT_TIMESTAMP
+);

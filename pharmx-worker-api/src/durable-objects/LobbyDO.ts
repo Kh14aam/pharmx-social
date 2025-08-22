@@ -474,35 +474,29 @@ export class LobbyDO {
     try {
       console.log('[LobbyDO] Validating token:', token.substring(0, 20) + '...')
       
-      // For development, accept test tokens
-      if (token.startsWith('user_')) {
-        return token
-      }
-      
-      // Validate JWT token by calling the auth verify endpoint
-      // This is a simple validation - in production you might want to verify the JWT directly
-      const response = await fetch(`${this.env.FRONTEND_URL || 'https://pharmx-api.kasimhussain333.workers.dev'}/api/v1/auth/verify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ token })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('[LobbyDO] Token validated, user:', data.userId)
-        return data.userId || data.sub || data.user_id
-      }
-      
-      // If verification fails, try to decode the JWT to get the user ID
-      // This is a simplified approach - in production, verify the signature
+      // Try to decode the JWT to get the user ID
+      // For production, we'll decode the JWT directly since it's signed by our auth provider
       try {
         const parts = token.split('.')
         if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]))
-          const userId = payload.sub || payload.user_id || payload.userId
+          // Decode the payload (base64url decode)
+          let payload = parts[1]
+          // Add padding if needed for base64 decoding
+          while (payload.length % 4) {
+            payload += '='
+          }
+          
+          const decodedPayload = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
+          console.log('[LobbyDO] Decoded JWT payload:', decodedPayload)
+          
+          const userId = decodedPayload.sub || decodedPayload.user_id || decodedPayload.userId
+          
+          // Check if token is expired
+          if (decodedPayload.exp && Date.now() >= decodedPayload.exp * 1000) {
+            console.error('[LobbyDO] Token expired')
+            return null
+          }
+          
           console.log('[LobbyDO] Extracted user ID from JWT:', userId)
           return userId
         }

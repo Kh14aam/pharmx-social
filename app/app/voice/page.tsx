@@ -83,6 +83,9 @@ export default function VoicePage() {
 
       // Get auth token from API client
       const token = apiClient.getToken()
+      console.log('[Voice] Retrieved token:', token)
+      console.log('[Voice] Token length:', token?.length)
+      console.log('[Voice] Token type:', typeof token)
       
       if (!token) {
         toast({

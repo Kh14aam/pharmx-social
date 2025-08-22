@@ -222,26 +222,18 @@ export default function SettingsPage() {
                 </Button>
               </div>
 
-              {/* Premium Badge */}
-              {!user.isPremium && (
-                <Card 
-                  className="mt-4 p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-200 dark:border-purple-800 cursor-pointer"
-                  onClick={handleUpgrade}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full">
-                        <CreditCard className="h-4 w-4 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm">Upgrade to Premium</p>
-                        <p className="text-xs text-muted-foreground">Unlock all features</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              {/* Welcome Card */}
+              <Card className="mt-4 p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-200 dark:border-blue-800">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full">
+                    <User className="h-4 w-4 text-white" />
                   </div>
-                </Card>
-              )}
+                  <div>
+                    <p className="font-semibold text-sm">Welcome to PharmX Social</p>
+                    <p className="text-xs text-muted-foreground">Connect with new people through voice chat</p>
+                  </div>
+                </div>
+              </Card>
             </>
           ) : null}
         </div>
