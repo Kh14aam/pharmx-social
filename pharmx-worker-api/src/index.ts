@@ -117,19 +117,15 @@ app.get('/room/:roomCode', async (c) => {
   return room.fetch(c.req.raw)
 })
 
-// Voice call WebSocket endpoint
-app.get('/signal/ws', async (c) => {
-  const upgradeHeader = c.req.header('Upgrade')
-  if (!upgradeHeader || upgradeHeader !== 'websocket') {
-    return c.text('Expected Upgrade: websocket', 426)
-  }
-
-  // Get the global LobbyDO instance
-  const id = c.env.LOBBY.idFromName('global-lobby')
-  const lobby = c.env.LOBBY.get(id)
-  
-  // Forward the request to the Durable Object
-  return lobby.fetch(c.req.raw)
+// WebSocket diagnostic endpoint
+app.get('/api/v1/ws-test', (c) => {
+  return c.json({
+    status: 'ok',
+    hasLobby: !!c.env.LOBBY,
+    wsEndpoint: '/signal/ws',
+    wsUrl: 'wss://pharmx-api.kasimhussain333.workers.dev/signal/ws',
+    timestamp: new Date().toISOString()
+  })
 })
 
 // Get TURN credentials endpoint
@@ -151,6 +147,32 @@ app.get('/api/v1/turn-credentials', (c) => {
   return c.json({ iceServers })
 })
 
+// Export default handler with special WebSocket handling
 export default {
-  fetch: app.fetch,
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // Check if this is a WebSocket request BEFORE passing to Hono
+    const url = new URL(request.url)
+    if (url.pathname === '/signal/ws') {
+      const upgradeHeader = request.headers.get('Upgrade')
+      
+      if (upgradeHeader === 'websocket') {
+        console.log('[WebSocket] Direct handling WebSocket request to bypass CORS')
+        
+        if (!env.LOBBY) {
+          console.error('[WebSocket] LOBBY Durable Object binding not found!')
+          return new Response('WebSocket service not configured', { status: 500 })
+        }
+        
+        // Get the global LobbyDO instance
+        const id = env.LOBBY.idFromName('global-lobby')
+        const lobby = env.LOBBY.get(id)
+        
+        // Forward directly to Durable Object, bypassing Hono and CORS
+        return lobby.fetch(request)
+      }
+    }
+    
+    // For non-WebSocket requests, use Hono app
+    return app.fetch(request, env, ctx)
+  },
 }

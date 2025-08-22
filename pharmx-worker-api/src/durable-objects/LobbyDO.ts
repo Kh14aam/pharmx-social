@@ -1,4 +1,3 @@
-import { DurableObject } from 'cloudflare:workers'
 import { v4 as uuidv4 } from 'uuid'
 
 interface User {
@@ -43,41 +42,86 @@ type ServerMessage =
   | { type: 'decision-result'; result: 'stayinchat' | 'notadded' }
   | { type: 'error'; code: string; message: string }
 
-export class LobbyDO extends DurableObject {
+export class LobbyDO {
   private users: Map<string, User> = new Map()
   private queue: string[] = []
   private calls: Map<string, Call> = new Map()
+  private state: DurableObjectState
   private env: any
 
-  constructor(ctx: DurableObjectState, env: any) {
-    super(ctx, env)
+  constructor(state: DurableObjectState, env: any) {
+    this.state = state
     this.env = env
   }
 
   async fetch(request: Request): Promise<Response> {
-    const upgradeHeader = request.headers.get('Upgrade')
-    if (!upgradeHeader || upgradeHeader !== 'websocket') {
-      return new Response('Expected Upgrade: websocket', { status: 426 })
+    try {
+      console.log('[LobbyDO] Fetch request received')
+      
+      const url = new URL(request.url)
+      console.log('[LobbyDO] Request URL:', url.pathname)
+      
+      const upgradeHeader = request.headers.get('Upgrade')
+      console.log('[LobbyDO] Upgrade header:', upgradeHeader)
+      
+      if (!upgradeHeader || upgradeHeader !== 'websocket') {
+        console.log('[LobbyDO] Not a WebSocket upgrade request')
+        return new Response('Expected Upgrade: websocket', { status: 426 })
+      }
+
+      console.log('[LobbyDO] Creating WebSocket pair...')
+      const pair = new WebSocketPair()
+      const [client, server] = Object.values(pair)
+
+      console.log('[LobbyDO] Accepting WebSocket on server side...')
+      // Accept the WebSocket connection on the server side
+      this.handleWebSocket(server)
+
+      console.log('[LobbyDO] Returning client WebSocket...')
+      return new Response(null, {
+        status: 101,
+        webSocket: client,
+      })
+    } catch (error) {
+      console.error('[LobbyDO] Error in fetch:', error)
+      return new Response('Internal Server Error', { status: 500 })
     }
+  }
 
-    const pair = new WebSocketPair()
-    const [client, server] = Object.values(pair)
+  private handleWebSocket(ws: WebSocket) {
+    // Accept the WebSocket connection
+    this.state.acceptWebSocket(ws)
+    console.log('[LobbyDO] WebSocket accepted')
+  }
 
-    this.ctx.acceptWebSocket(server)
+  async webSocketOpen(ws: WebSocket) {
+    console.log('[LobbyDO] WebSocket connection opened')
+    // Send a welcome message to confirm connection
+    try {
+      ws.send(JSON.stringify({ type: 'connected', message: 'WebSocket connected successfully' }))
+    } catch (e) {
+      console.error('[LobbyDO] Failed to send welcome message:', e)
+    }
+  }
 
-    return new Response(null, {
-      status: 101,
-      webSocket: client,
-    })
+  async webSocketError(ws: WebSocket, error: any) {
+    console.error('[LobbyDO] WebSocket error:', error)
   }
 
   async webSocketMessage(ws: WebSocket, messageStr: string | ArrayBuffer) {
-    if (typeof messageStr !== 'string') return
+    console.log('[LobbyDO] WebSocket message received')
+    
+    if (typeof messageStr !== 'string') {
+      console.log('[LobbyDO] Non-string message, ignoring')
+      return
+    }
 
     let message: ClientMessage
     try {
       message = JSON.parse(messageStr)
+      console.log('[LobbyDO] Parsed message type:', message.type)
     } catch (e) {
+      console.error('[LobbyDO] Failed to parse message:', e)
       this.sendMessage(ws, { type: 'error', code: 'INVALID_JSON', message: 'Invalid message format' })
       return
     }
@@ -124,9 +168,12 @@ export class LobbyDO extends DurableObject {
   }
 
   async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
+    console.log(`[LobbyDO] WebSocket closed: code=${code}, reason=${reason}, wasClean=${wasClean}`)
+    
     // Find and handle disconnected user
     for (const [userId, user] of this.users) {
       if (user.ws === ws) {
+        console.log(`[LobbyDO] User ${userId} disconnected`)
         await this.handleDisconnect(userId)
         break
       }
@@ -425,19 +472,48 @@ export class LobbyDO extends DurableObject {
 
   private async validateToken(token: string): Promise<string | null> {
     try {
-      // For now, return a mock user ID
-      // In production, validate JWT with Auth0
-      // const decoded = jwt.verify(token, this.env.JWT_SECRET)
-      // return decoded.sub
+      console.log('[LobbyDO] Validating token:', token.substring(0, 20) + '...')
       
-      // Mock implementation - extract user ID from token
+      // For development, accept test tokens
       if (token.startsWith('user_')) {
         return token
       }
       
+      // Validate JWT token by calling the auth verify endpoint
+      // This is a simple validation - in production you might want to verify the JWT directly
+      const response = await fetch(`${this.env.FRONTEND_URL || 'https://pharmx-api.kasimhussain333.workers.dev'}/api/v1/auth/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ token })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('[LobbyDO] Token validated, user:', data.userId)
+        return data.userId || data.sub || data.user_id
+      }
+      
+      // If verification fails, try to decode the JWT to get the user ID
+      // This is a simplified approach - in production, verify the signature
+      try {
+        const parts = token.split('.')
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]))
+          const userId = payload.sub || payload.user_id || payload.userId
+          console.log('[LobbyDO] Extracted user ID from JWT:', userId)
+          return userId
+        }
+      } catch (decodeError) {
+        console.error('[LobbyDO] Failed to decode JWT:', decodeError)
+      }
+      
+      console.error('[LobbyDO] Token validation failed')
       return null
     } catch (e) {
-      console.error('Token validation failed:', e)
+      console.error('[LobbyDO] Token validation error:', e)
       return null
     }
   }

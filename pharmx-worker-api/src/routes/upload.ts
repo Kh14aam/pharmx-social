@@ -93,9 +93,9 @@ upload.post('/avatar', verifyAuth, async (c) => {
       return c.json({ error: 'Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.' }, 400)
     }
     
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      return c.json({ error: 'File too large. Maximum size is 5MB.' }, 400)
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      return c.json({ error: 'File too large. Maximum size is 10MB.' }, 400)
     }
     
     // Generate key for R2 (overwrite-in-place strategy)

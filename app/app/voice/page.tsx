@@ -7,6 +7,7 @@ import { Phone, PhoneOff, Mic, MicOff, Loader2, Heart, X, Clock } from "lucide-r
 import { useToast } from "@/hooks/use-toast"
 import { SignalingClient } from "@/lib/voice/signaling"
 import { useRouter } from "next/navigation"
+import { apiClient } from "@/lib/api-client"
 
 type VoiceState = "idle" | "searching" | "connecting" | "in_call" | "deciding" | "waiting_decision"
 
@@ -80,8 +81,18 @@ export default function VoicePage() {
 
       setState("searching")
 
-      // Get auth token (in production, get from Auth0)
-      const token = localStorage.getItem('pharmx_token') || 'user_test_token'
+      // Get auth token from API client
+      const token = apiClient.getToken()
+      
+      if (!token) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to use voice chat",
+          variant: "destructive",
+        })
+        router.push('/login')
+        return
+      }
       
       // Connect to signaling server
       const wsUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'

@@ -57,10 +57,10 @@ export default function OnboardingPage() {
 
     console.log('[Onboarding] Selected file:', file.name, 'size:', file.size, 'type:', file.type)
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) {
       toast({
         title: "File too large",
-        description: "Please select an image under 5MB",
+        description: "Please select an image under 10MB",
         variant: "destructive",
       })
       return
@@ -121,8 +121,8 @@ export default function OnboardingPage() {
         description: "Your profile has been created",
       })
 
-      // Redirect to users page instead of voice
-      router.push("/users")
+      // Redirect to app users page
+      router.push("/app/users")
     } catch (error) {
       console.error('[Onboarding] Profile creation error:', error)
       

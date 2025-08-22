@@ -23,6 +23,30 @@ export class ApiClient {
     }
   }
 
+  // Set token only
+  setToken(token: string) {
+    this.token = token
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pharmx_token', token)
+    }
+  }
+
+  // Get current token
+  getToken(): string | null {
+    if (!this.token && typeof window !== 'undefined') {
+      this.token = localStorage.getItem('pharmx_token')
+    }
+    return this.token
+  }
+
+  // Get current session ID
+  getSessionId(): string | null {
+    if (!this.sessionId && typeof window !== 'undefined') {
+      this.sessionId = localStorage.getItem('pharmx_session')
+    }
+    return this.sessionId
+  }
+
   // Clear authentication
   clearAuth() {
     this.token = null
@@ -31,6 +55,11 @@ export class ApiClient {
       localStorage.removeItem('pharmx_token')
       localStorage.removeItem('pharmx_session')
     }
+  }
+
+  // Alias for clearAuth
+  clearToken() {
+    this.clearAuth()
   }
 
   // Make authenticated request
