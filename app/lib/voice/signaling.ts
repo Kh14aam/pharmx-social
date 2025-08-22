@@ -1,26 +1,10 @@
-type EventCallback = (...args: unknown[]) => void
-
-// Define all possible event types
-export interface SignalingEvents {
-  onStateChange: (state: string) => void
-  onPaired: (role: 'offerer' | 'answerer', callId: string, partner?: { name: string; avatar?: string; id: string }) => void
-  onOffer: (sdp: RTCSessionDescriptionInit) => void
-  onAnswer: (sdp: RTCSessionDescriptionInit) => void
-  onIceCandidate: (candidate: RTCIceCandidate) => void
-  onCallStarted: (seconds: number) => void
-  onTick: (seconds: number) => void
-  onCallEnded: (reason: string) => void
-  onDecisionWaiting: () => void
-  onDecisionResult: (result: string) => void
-  onBothAccepted: () => void
-  onError: (code: string, message: string) => void
-}
+type EventCallback = (...args: unknown[]) => void | Promise<void>
 
 export class SignalingClient {
   private ws: WebSocket | null = null
   private url: string
   private token: string
-  private events: Map<keyof SignalingEvents, EventCallback[]> = new Map()
+  private events: Map<string, EventCallback[]> = new Map()
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectTimeout: NodeJS.Timeout | null = null
@@ -215,14 +199,14 @@ export class SignalingClient {
     return this.state
   }
 
-  on(event: keyof SignalingEvents, callback: EventCallback) {
+  on(event: string, callback: EventCallback) {
     if (!this.events.has(event)) {
       this.events.set(event, [])
     }
     this.events.get(event)!.push(callback)
   }
 
-  private emit(event: keyof SignalingEvents, ...args: unknown[]) {
+  private emit(event: string, ...args: unknown[]) {
     const callbacks = this.events.get(event)
     if (callbacks) {
       callbacks.forEach(callback => {
