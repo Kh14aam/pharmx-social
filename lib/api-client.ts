@@ -174,6 +174,7 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+    delete: () => this.request('/api/v1/profile', { method: 'DELETE' }),
   }
 
   // Users endpoints

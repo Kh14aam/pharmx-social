@@ -170,7 +170,7 @@ export default function OnboardingPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Avatar Upload - Matching Users Tab Size */}
             <div className="flex flex-col items-center space-y-3">
-              <div className="relative w-48 h-64 rounded-lg overflow-hidden border-4 border-gray-200">
+            <div className="relative w-48 h-48 rounded-lg overflow-hidden border-4 border-gray-200">
                 {avatarPreview ? (
                   <div 
                     className="absolute inset-0 bg-cover bg-center"
