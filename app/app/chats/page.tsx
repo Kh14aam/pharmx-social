@@ -5,9 +5,15 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
-import { 
-  Phone, Send, Check, CheckCheck, MessageSquare, 
-  ArrowLeft, Video, MoreVertical, Paperclip, Smile,
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Phone, Send, Check, CheckCheck, MessageSquare,
+  ArrowLeft, MoreVertical, Paperclip, Smile,
   Search, Filter
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -123,12 +129,20 @@ export default function ChatsPage() {
     alert("Starting voice call...")
   }
 
+  const handleBlock = () => {
+    alert("User blocked")
+  }
+
+  const handleReport = () => {
+    alert("User reported")
+  }
+
   // Mobile view: show chat list or conversation
   // Desktop view: show both side by side
   const isChatSelected = selectedChat !== null
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex bg-background">
+    <div className="h-full flex bg-background">
       {/* Chat List - hidden on mobile when chat is selected */}
       <div className={`${isChatSelected ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-[380px] border-r bg-muted/30`}>
         <Tabs defaultValue="chats" className="flex-1 flex flex-col">
@@ -291,20 +305,21 @@ export default function ChatsPage() {
               >
                 <Phone className="h-4 w-4" />
               </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-9 w-9 rounded-full"
-              >
-                <Video className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-9 w-9 rounded-full"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-9 w-9 rounded-full"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleBlock}>Block</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleReport}>Report</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
