@@ -16,6 +16,13 @@ import { ChevronRight, Camera, User, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { apiClient } from "@/lib/api-client"
 
+const withApiBase = (url?: string | null) => {
+  if (!url) return ""
+  if (url.startsWith("http")) return url
+  const base = process.env.NEXT_PUBLIC_API_URL || ""
+  return `${base}${url}`
+}
+
 const profileSchema = z.object({
   name: z.string().min(2).max(40),
   gender: z.enum(["male", "female"]),
@@ -81,7 +88,7 @@ export default function AccountSettingsPage() {
       }
       
       setUser(profile)
-      setAvatarPreview(profile.avatarUrl || '')
+      setAvatarPreview(withApiBase(profile.avatarUrl))
       
       // Set form values
       setValue("name", profile.name)
@@ -134,6 +141,7 @@ export default function AccountSettingsPage() {
     try {
       const result = await apiClient.profile.uploadAvatar(file)
       setValue("avatarUrl", result.url)
+      setAvatarPreview(withApiBase(result.url))
       
       toast({
         title: "Photo updated",
