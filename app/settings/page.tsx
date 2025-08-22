@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { 
   ChevronRight, 
@@ -240,19 +239,6 @@ export default function SettingsPage() {
                   </svg>
                 </Button>
               </div>
-
-              {/* Welcome Card */}
-              <Card className="mt-4 p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-200 dark:border-blue-800">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full">
-                    <User className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm">Welcome to PharmX Social</p>
-                    <p className="text-xs text-muted-foreground">Connect with new people through voice chat</p>
-                  </div>
-                </div>
-              </Card>
             </>
           ) : null}
         </div>
