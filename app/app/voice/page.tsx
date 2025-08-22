@@ -112,9 +112,9 @@ export default function VoicePage() {
         console.log('[Voice] Signaling state:', signalingState)
       })
 
-      signaling.on('onPaired', async (role, id, partner) => {
-        console.log(`[Voice] Paired as ${role} for call ${id}`, partner)
-        setCallId(id)
+      signaling.on('onPaired', async (role, callId, partner) => {
+        console.log(`[Voice] Paired as ${role} for call ${callId}`, partner)
+        setCallId(callId)
         setPartner(partner || null)
         setState("connecting")
         await setupWebRTC(role)
