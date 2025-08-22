@@ -37,11 +37,6 @@ interface SignalingEvents {
   onError: (code: string, message: string) => void;
 }
 
-export declare interface SignalingClient {
-  on<E extends keyof SignalingEvents>(event: E, listener: SignalingEvents[E]): this;
-  emit<E extends keyof SignalingEvents>(event: E, ...args: Parameters<SignalingEvents[E]>): boolean;
-}
-
 export class SignalingClient extends EventEmitter {
   private ws: WebSocket | null = null
   private url: string
@@ -54,6 +49,16 @@ export class SignalingClient extends EventEmitter {
     super()
     this.url = url
     this.token = token
+  }
+
+  // Strongly-typed EventEmitter interface
+  on<E extends keyof SignalingEvents>(event: E, listener: SignalingEvents[E]): this {
+    // Bridge to base EventEmitter with proper typing
+    return super.on(event as unknown as string, (...args: any[]) => (listener as any)(...args)) as this
+  }
+
+  emit<E extends keyof SignalingEvents>(event: E, ...args: Parameters<SignalingEvents[E]>): boolean {
+    return super.emit(event as unknown as string, ...(args as unknown as any[]))
   }
 
   connect() {
