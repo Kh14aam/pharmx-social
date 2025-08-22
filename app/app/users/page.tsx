@@ -103,14 +103,6 @@ export default function UsersPage() {
 
   return (
     <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4">
-      {/* Header */}
-      <div className="mb-4 px-2">
-        <h1 className="text-2xl font-bold">Discover</h1>
-        <p className="text-sm text-muted-foreground">
-          Find people nearby to connect with
-        </p>
-      </div>
-
       {/* User Grid - Picture Focused */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
         {mockUsers.map((user) => {
