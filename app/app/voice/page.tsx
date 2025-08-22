@@ -144,6 +144,12 @@ export default function VoicePage() {
         signalingRef.current!.role = role
       })
 
+      signaling.on('onBothAccepted', async () => {
+        console.log('[Voice] Both users accepted, setting up WebRTC')
+        const role = signalingRef.current?.role || 'answerer'
+        await setupWebRTC(role)
+      })
+
       signaling.on('onOffer', async (sdp) => {
         if (pcRef.current) {
           await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp))
@@ -371,22 +377,19 @@ export default function VoicePage() {
   }
 
   // Accept incoming call
-  const acceptCall = async () => {
+  const acceptCall = () => {
+    console.log('[Voice] Accepting call')
+    signalingRef.current?.sendAccept()
+    // Wait for both users to accept
     setState("connecting")
-    const role = signalingRef.current?.role || 'answerer'
-    await setupWebRTC(role)
   }
 
   // Decline incoming call
   const declineCall = () => {
-    cleanup()
-    setState("idle")
-    toast({
-      title: "Call declined",
-      description: "Looking for someone else...",
-    })
-    // Optionally, auto-restart search
-    setTimeout(() => startFindingVoice(), 1000)
+    console.log('[Voice] Declining call')
+    signalingRef.current?.sendDecline()
+    // The backend will handle putting us back in queue
+    setState("searching")
   }
 
   // Rotate waiting messages during search

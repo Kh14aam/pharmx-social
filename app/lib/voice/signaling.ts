@@ -123,17 +123,22 @@ export class SignalingClient {
         this.emit('onDecisionWaiting')
         break
         
-      case 'decision-result':
-        this.emit('onDecisionResult', data.result)
-        break
-        
-      case 'error':
-        this.emit('onError', data.code, data.message)
-        break
-        
-      default:
-        console.log('[SignalingClient] Unknown message type:', data.type)
-    }
+        case 'decisionResult':
+          this.emit('onDecisionResult', data.result)
+          break
+
+        case 'bothAccepted':
+          // Both users accepted, now proceed with WebRTC setup
+          this.emit('onBothAccepted')
+          break
+
+        case 'error':
+          this.emit('onError', data.code, data.message)
+          break
+
+        default:
+          console.warn('[SignalingClient] Unknown message type:', data.type)
+      }
   }
 
   private send(data: Record<string, unknown>) {
@@ -168,6 +173,18 @@ export class SignalingClient {
   sendReady() {
     this.send({
       type: 'ready'
+    })
+  }
+
+  sendAccept() {
+    this.send({
+      type: 'accept'
+    })
+  }
+
+  sendDecline() {
+    this.send({
+      type: 'decline'
     })
   }
 
