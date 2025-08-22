@@ -9,6 +9,11 @@ interface User {
   callId?: string
   ready?: boolean
   decision?: 'stay' | 'skip'
+  profile?: {
+    name: string
+    avatar?: string
+    id: string
+  }
 }
 
 interface Call {
@@ -31,7 +36,7 @@ type ClientMessage =
   | { type: 'ping' }
 
 type ServerMessage =
-  | { type: 'status'; state: 'queued' | 'paired'; role?: 'offerer' | 'answerer'; callId?: string }
+  | { type: 'status'; state: 'queued' | 'paired'; role?: 'offerer' | 'answerer'; callId?: string; partner?: { name: string; avatar?: string; id: string } }
   | { type: 'offer'; sdp: any }
   | { type: 'answer'; sdp: any }
   | { type: 'ice'; candidate: any }
@@ -317,6 +322,18 @@ export class LobbyDO {
 
       if (!userA || !userB) continue
 
+      // Fetch profile data for both users
+      try {
+        const userAProfile = await this.fetchUserProfile(userAId)
+        const userBProfile = await this.fetchUserProfile(userBId)
+        
+        // Store profiles in user objects
+        userA.profile = userAProfile
+        userB.profile = userBProfile
+      } catch (e) {
+        console.error('Failed to fetch user profiles:', e)
+      }
+
       // Create call record
       const callId = uuidv4()
 
@@ -331,9 +348,21 @@ export class LobbyDO {
       userB.role = 'answerer'
       userB.callId = callId
 
-      // Notify both users
-      this.sendMessage(userA.ws, { type: 'status', state: 'paired', role: 'offerer', callId })
-      this.sendMessage(userB.ws, { type: 'status', state: 'paired', role: 'answerer', callId })
+      // Notify both users with partner profile
+      this.sendMessage(userA.ws, { 
+        type: 'status', 
+        state: 'paired', 
+        role: 'offerer', 
+        callId,
+        partner: userB.profile 
+      })
+      this.sendMessage(userB.ws, { 
+        type: 'status', 
+        state: 'paired', 
+        role: 'answerer', 
+        callId,
+        partner: userA.profile 
+      })
     }
   }
 
@@ -509,6 +538,30 @@ export class LobbyDO {
     } catch (e) {
       console.error('[LobbyDO] Token validation error:', e)
       return null
+    }
+  }
+
+  private async fetchUserProfile(userId: string): Promise<{ name: string; avatar?: string; id: string }> {
+    try {
+      const result = await this.env.DB.prepare(
+        'SELECT id, name, avatar_url FROM users WHERE id = ?'
+      ).bind(userId).first()
+
+      if (result) {
+        return {
+          id: result.id,
+          name: result.name || 'Anonymous',
+          avatar: result.avatar_url
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch user profile:', e)
+    }
+
+    // Fallback profile
+    return {
+      id: userId,
+      name: 'Anonymous'
     }
   }
 

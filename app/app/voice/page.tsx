@@ -3,7 +3,8 @@
 import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Phone, PhoneOff, Mic, MicOff, Loader2, Heart, X, Clock } from "lucide-react"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Phone, PhoneOff, Mic, MicOff, Loader2, Heart, X, Clock, User } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { SignalingClient } from "@/lib/voice/signaling"
 import { useRouter } from "next/navigation"
@@ -19,6 +20,7 @@ export default function VoicePage() {
   const [remainingSeconds, setRemainingSeconds] = useState(1200) // 20 minutes
   const [, setCallId] = useState<string | null>(null)
   const [decision, setDecision] = useState<"stay" | "skip" | null>(null)
+  const [partner, setPartner] = useState<{ name: string; avatar?: string; id: string } | null>(null)
   
   const signalingRef = useRef<SignalingClient | null>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
@@ -64,6 +66,7 @@ export default function VoicePage() {
     setRemainingSeconds(1200)
     setCallId(null)
     setDecision(null)
+    setPartner(null)
   }, [])
 
   // Start finding a voice
@@ -109,9 +112,10 @@ export default function VoicePage() {
         console.log('[Voice] Signaling state:', signalingState)
       })
 
-      signaling.on('onPaired', async (role, id) => {
-        console.log(`[Voice] Paired as ${role} for call ${id}`)
+      signaling.on('onPaired', async (role, id, partnerProfile) => {
+        console.log(`[Voice] Paired as ${role} for call ${id}`, partnerProfile)
         setCallId(id)
+        setPartner(partnerProfile || null)
         setState("connecting")
         await setupWebRTC(role)
       })
@@ -379,8 +383,26 @@ export default function VoicePage() {
       {state === "connecting" && (
         <Card className="w-full max-w-md p-8 text-center space-y-6">
           <div className="space-y-4">
-            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-            <p className="text-lg font-medium">Connecting…</p>
+            {partner && (
+              <div className="space-y-3">
+                <Avatar className="h-20 w-20 mx-auto">
+                  <AvatarImage src={partner.avatar} alt={partner.name} />
+                  <AvatarFallback className="text-lg">
+                    {partner.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold">{partner.name}</h3>
+                  <p className="text-sm text-muted-foreground">Connecting...</p>
+                </div>
+              </div>
+            )}
+            {!partner && (
+              <div className="space-y-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                <p className="text-lg font-medium">Connecting…</p>
+              </div>
+            )}
           </div>
         </Card>
       )}
@@ -389,6 +411,17 @@ export default function VoicePage() {
       {state === "in_call" && (
         <Card className="w-full max-w-md p-8 text-center space-y-6">
           <div className="space-y-4">
+            {partner && (
+              <div className="space-y-3">
+                <Avatar className="h-20 w-20 mx-auto">
+                  <AvatarImage src={partner.avatar} alt={partner.name} />
+                  <AvatarFallback className="text-lg">
+                    {partner.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <h3 className="text-lg font-semibold">{partner.name}</h3>
+              </div>
+            )}
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">{"You're connected"}</p>
               <div className="flex items-center justify-center space-x-2">

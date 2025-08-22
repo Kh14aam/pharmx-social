@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events'
 
 type ServerMessage =
-  | { type: 'status'; state: 'queued' | 'paired'; role?: 'offerer' | 'answerer'; callId?: string }
+  | { type: 'status'; state: 'queued' | 'paired'; role?: 'offerer' | 'answerer'; callId?: string; partner?: { name: string; avatar?: string; id: string } }
   | { type: 'offer'; sdp: RTCSessionDescriptionInit }
   | { type: 'answer'; sdp: RTCSessionDescriptionInit }
   | { type: 'ice'; candidate: RTCIceCandidateInit }
@@ -103,7 +103,7 @@ export class SignalingClient extends EventEmitter {
         this.emit('onStateChange', this.state)
         
         if (message.state === 'paired' && message.role && message.callId) {
-          this.emit('onPaired', message.role, message.callId)
+          this.emit('onPaired', message.role, message.callId, message.partner)
         }
         break
 
