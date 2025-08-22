@@ -3,12 +3,19 @@
 export type SignalingState = 'disconnected' | 'connecting' | 'queued' | 'paired' | 'in_call' | 'deciding' | 'resolved'
 
 export type ServerMessage =
-  | { type: 'status'; state: 'queued' | 'paired'; role?: 'offerer' | 'answerer'; callId?: string; partner?: { name: string; avatar?: string; id: string } }
+  | {
+      type: 'status'
+      state: 'queued' | 'paired'
+      role?: 'offerer' | 'answerer'
+      callId?: string
+      partner?: { name: string; avatar?: string; id: string }
+    }
   | { type: 'offer'; sdp: RTCSessionDescriptionInit }
   | { type: 'answer'; sdp: RTCSessionDescriptionInit }
   | { type: 'ice'; candidate: RTCIceCandidateInit }
   | { type: 'call-started'; remainingSec: number }
   | { type: 'tick'; remainingSec: number }
+  | { type: 'both-accepted' }
   | { type: 'call-ended'; reason: 'duration' | 'hangup' | 'disconnect' | 'error' }
   | { type: 'decision-waiting' }
   | { type: 'decision-result'; result: 'stayinchat' | 'notadded' }
@@ -25,8 +32,11 @@ export interface SignalingEvents {
   onCallEnded: (reason: 'duration' | 'hangup' | 'disconnect' | 'error') => void
   onDecisionWaiting: () => void
   onDecisionResult: (result: 'stayinchat' | 'notadded') => void
+  onBothAccepted: () => void
   onError: (code: string, message: string) => void
 }
+
+export type SignalingEventType = keyof SignalingEvents
 
 export class SignalingClient {
   private ws: WebSocket | null = null
@@ -141,6 +151,16 @@ export class SignalingClient {
     this.send({ type: 'decision', choice })
   }
 
+  // Accept incoming call
+  sendAccept() {
+    this.send({ type: 'accept' })
+  }
+
+  // Decline incoming call
+  sendDecline() {
+    this.send({ type: 'decline' })
+  }
+
   // Get current state
   getState(): SignalingState {
     return this.state
@@ -184,6 +204,10 @@ export class SignalingClient {
       case 'call-ended':
         this.updateState('deciding')
         this.events.onCallEnded?.(message.reason)
+        break
+
+      case 'both-accepted':
+        this.events.onBothAccepted?.()
         break
       
       case 'decision-waiting':

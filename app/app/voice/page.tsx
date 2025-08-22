@@ -128,8 +128,8 @@ export default function VoicePage() {
       signalingRef.current = signaling
 
       // Set up signaling event handlers
-      // Type cast events to align with SignalingEventType
-      const evt = (eventName: SignalingEventType) => eventName
+      // Helper to preserve literal types for event names
+      const evt = <T extends SignalingEventType>(eventName: T) => eventName
 
       signaling.on(evt('onStateChange'), (signalingState: string) => {
         console.log('[Voice] Signaling state:', signalingState)
