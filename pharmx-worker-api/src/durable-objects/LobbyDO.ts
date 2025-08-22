@@ -12,7 +12,7 @@ interface User {
   acceptedCall?: boolean
   profile?: {
     name: string
-    avatar?: string
+    avatar: string
     id: string
   }
 }
@@ -39,7 +39,8 @@ type ClientMessage =
   | { type: 'ping' }
 
 type ServerMessage =
-  | { type: 'status'; state: 'queued' | 'paired'; role?: 'offerer' | 'answerer'; callId?: string; partner?: { name: string; avatar?: string; id: string } }
+  | { type: 'status'; state: 'queued' }
+  | { type: 'status'; state: 'paired'; role: 'offerer' | 'answerer'; callId: string; partner: { name: string; avatar: string; id: string } }
   | { type: 'offer'; sdp: any }
   | { type: 'answer'; sdp: any }
   | { type: 'ice'; candidate: any }
@@ -650,7 +651,7 @@ export class LobbyDO {
     }
   }
 
-  private async fetchUserProfile(userId: string): Promise<{ name: string; avatar?: string; id: string }> {
+  private async fetchUserProfile(userId: string): Promise<{ name: string; avatar: string; id: string }> {
     try {
       const result = await this.env.DB.prepare(
         'SELECT id, name, avatar_url FROM users WHERE id = ?'
@@ -660,7 +661,7 @@ export class LobbyDO {
         return {
           id: result.id,
           name: result.name || 'Anonymous',
-          avatar: result.avatar_url
+          avatar: result.avatar_url || ''
         }
       }
     } catch (e) {
@@ -670,7 +671,8 @@ export class LobbyDO {
     // Fallback profile
     return {
       id: userId,
-      name: 'Anonymous'
+      name: 'Anonymous',
+      avatar: ''
     }
   }
 

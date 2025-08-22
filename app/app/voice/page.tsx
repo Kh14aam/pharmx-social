@@ -29,7 +29,7 @@ export default function VoicePage() {
   const [remainingSeconds, setRemainingSeconds] = useState(1200) // 20 minutes
   const [, setCallId] = useState<string | null>(null)
   const [decision, setDecision] = useState<"stay" | "skip" | null>(null)
-  const [partner, setPartner] = useState<{ name: string; avatar?: string; id: string } | null>(null)
+  const [partner, setPartner] = useState<{ name: string; avatar: string; id: string } | null>(null)
   const [waitingMessageIndex, setWaitingMessageIndex] = useState(0)
   
   const signalingRef = useRef<SignalingClient | null>(null)
@@ -179,14 +179,17 @@ export default function VoicePage() {
         async (
           role: 'offerer' | 'answerer',
           callId: string,
-          partner?: { name: string; avatar?: string; id: string }
+          partner: { name: string; avatar: string; id: string }
         ) => {
           console.log(`[Voice] Paired as ${role} for call ${callId}`, partner)
           setCallId(callId)
 
-          if (!partner) {
-            // No partner ready yet, keep searching
-            setPartner(null)
+          if (!partner?.name || !partner?.avatar) {
+            toast({
+              title: 'Profile required',
+              description: 'Could not load partner profile',
+              variant: 'destructive'
+            })
             setState('searching')
             return
           }
@@ -539,7 +542,7 @@ export default function VoicePage() {
             <div className="space-y-3">
               <div className="relative">
                 <Avatar className="h-24 w-24 mx-auto">
-                  <AvatarImage src={partner?.avatar} alt={partner?.name || "User"} />
+                  <AvatarImage src={partner?.avatar} alt={partner?.name} />
                   <AvatarFallback className="text-2xl">
                     {partner?.name?.charAt(0)?.toUpperCase() || "?"}
                   </AvatarFallback>
@@ -551,7 +554,7 @@ export default function VoicePage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <h3 className="text-xl font-semibold">{partner?.name || "Someone"}</h3>
+                <h3 className="text-xl font-semibold">{partner?.name}</h3>
                 <p className="text-sm text-muted-foreground">wants to voice chat with you</p>
               </div>
             </div>
@@ -587,13 +590,13 @@ export default function VoicePage() {
             {partner && (
               <div className="space-y-3">
                 <Avatar className="h-20 w-20 mx-auto">
-                  <AvatarImage src={partner?.avatar} alt={partner?.name || "User"} />
+                  <AvatarImage src={partner?.avatar} alt={partner?.name} />
                   <AvatarFallback className="text-lg">
                     {partner?.name?.charAt(0)?.toUpperCase() || "?"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="space-y-1">
-                  <h3 className="text-lg font-semibold">{partner?.name || "Waiting..."}</h3>
+                  <h3 className="text-lg font-semibold">{partner?.name}</h3>
                   <p className="text-sm text-muted-foreground">Waiting for the other person to connect…</p>
                 </div>
               </div>
@@ -615,12 +618,12 @@ export default function VoicePage() {
             {partner && (
               <div className="space-y-3">
                 <Avatar className="h-20 w-20 mx-auto">
-                  <AvatarImage src={partner?.avatar} alt={partner?.name || "User"} />
+                  <AvatarImage src={partner?.avatar} alt={partner?.name} />
                   <AvatarFallback className="text-lg">
                     {partner?.name?.charAt(0)?.toUpperCase() || "?"}
                   </AvatarFallback>
                 </Avatar>
-                <h3 className="text-lg font-semibold">{partner?.name || "Voice Chat"}</h3>
+                <h3 className="text-lg font-semibold">{partner?.name}</h3>
               </div>
             )}
             <div className="space-y-2">
