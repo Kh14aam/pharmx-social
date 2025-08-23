@@ -1,0 +1,1 @@
+"use strict";exports.id=78,exports.ids=[78],exports.modules={6078:(r,e,s)=>{s.r(e),s.d(e,{ShaderAnimation:()=>t});let t=(0,s(2772).createProxy)(String.raw`C:\Users\kasim\pharmx-social-1\frontend\components\ui\shader-animation.tsx#ShaderAnimation`)}};

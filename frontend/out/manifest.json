@@ -1,0 +1,26 @@
+{
+  "name": "PharmX Social",
+  "short_name": "PharmX",
+  "description": "Meet new people. Connect with voices worldwide.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["social", "communication"],
+  "lang": "en-GB",
+  "dir": "ltr"
+}

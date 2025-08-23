@@ -2,11 +2,14 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 
 // Durable Object imports (required for export)
-import { ChatRoom } from './durable-objects/ChatRoom'
-import { MatchmakingQueue } from './durable-objects/MatchmakingQueue'
-import { LobbyDO } from './durable-objects/LobbyDO'
+export { ChatRoom } from './durable-objects/ChatRoom'
+export { MatchmakingQueue } from './durable-objects/MatchmakingQueue'
+export { LobbyDO } from './durable-objects/LobbyDO'
 
 export interface Env {
+	// This ensures `wrangler secret put` populates the environment
+	[key: string]: any;
+
 	// OAuth Configuration
 	GOOGLE_CLIENT_ID: string
 	GOOGLE_CLIENT_SECRET: string
@@ -21,34 +24,41 @@ export interface Env {
 	CHAT_ROOMS: DurableObjectNamespace
 	MATCHMAKING_QUEUE: DurableObjectNamespace
 	LOBBY: DurableObjectNamespace
-
-	// Static assets binding
-	ASSETS: Fetcher
 }
 
-const app = new Hono()
+const app = new Hono<{ Bindings: Env }>()
 
-// CORS configuration
-app.use('*', cors({
-	origin: ['https://chat.pharmx.co.uk', 'https://pharmx-api.kasimhussain333.workers.dev', 'http://localhost:3000'],
+// Configure CORS for API routes
+app.use('/api/*', cors({
+	origin: (origin) => {
+		const allowedOrigins = [
+			'https://chat.pharmx.co.uk',
+			'http://localhost:3000'
+		];
+		if (allowedOrigins.includes(origin)) {
+			return origin;
+		}
+		// Allow worker URL for development/testing
+		return 'https://pharmx-api-worker.kasimhussain333.workers.dev';
+	},
 	allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 	allowHeaders: ['Content-Type', 'Authorization'],
 	credentials: true,
 }))
 
+const api = app.basePath('/api/v1')
+
 // Health check endpoint
-app.get('/health', (c) => {
-	const env = c.env as any
+api.get('/health', (c) => {
 	return c.json({ 
 		status: 'healthy', 
 		timestamp: new Date().toISOString(),
-		environment: env?.ENVIRONMENT || 'production'
+		environment: c.env.ENVIRONMENT || 'production'
 	})
 })
 
 // OAuth exchange endpoint for frontend
-app.post('/api/v1/oauth/google/exchange', async (c) => {
-	const env = c.env as any
+api.post('/oauth/google/exchange', async (c) => {
 	const { code } = await c.req.json()
 	
 	if (!code) {
@@ -61,9 +71,9 @@ app.post('/api/v1/oauth/google/exchange', async (c) => {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: new URLSearchParams({
-				client_id: env.GOOGLE_CLIENT_ID || '',
-				client_secret: env.GOOGLE_CLIENT_SECRET || '',
-				redirect_uri: env.GOOGLE_REDIRECT_URI || '',
+				client_id: c.env.GOOGLE_CLIENT_ID,
+				client_secret: c.env.GOOGLE_CLIENT_SECRET,
+				redirect_uri: c.env.GOOGLE_REDIRECT_URI,
 				grant_type: 'authorization_code',
 				code: code,
 			}),
@@ -94,7 +104,7 @@ app.post('/api/v1/oauth/google/exchange', async (c) => {
 			email: userInfo.email,
 			name: userInfo.name,
 			picture: userInfo.picture,
-		}, env.JWT_SECRET || '')
+		}, c.env.JWT_SECRET)
 		
 		return c.json({
 			success: true,
@@ -146,19 +156,8 @@ async function createJWT(payload: any, secret: string): Promise<string> {
 	return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
 }
 
-// Static asset fetcher using ASSETS binding with SPA fallback
-app.get('*', async (c) => {
-	const env = c.env as any
-	const url = new URL(c.req.url)
-	const path = url.pathname === '/' ? '/index.html' : url.pathname
-	const res = await env.ASSETS.fetch(new Request(`https://assets${path}`))
-	if (res.status === 404) {
-		return env.ASSETS.fetch(new Request('https://assets/index.html'))
-	}
-	return res
-})
-
-export default app
-
-// Export Durable Objects (required by wrangler.toml)
-export { ChatRoom, MatchmakingQueue, LobbyDO } 
+export default {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+		return app.fetch(request, env, ctx);
+	},
+}; 
