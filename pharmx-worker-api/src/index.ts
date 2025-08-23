@@ -16,6 +16,11 @@ export interface Env {
   JWT_SECRET: string
   FRONTEND_URL: string
   ENVIRONMENT: string
+  
+  // Durable Objects (required by wrangler.toml)
+  CHAT_ROOMS: DurableObjectNamespace
+  MATCHMAKING_QUEUE: DurableObjectNamespace
+  LOBBY: DurableObjectNamespace
 }
 
 // Create the main Hono app

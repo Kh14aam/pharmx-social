@@ -5,24 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # Basic configuration - we'll add environment-specific vars later
 
-# Database binding
-[[d1_databases]]
-binding = "DB"
-database_name = "pharmx-social-db"
-database_id = "9050344e-9b99-4651-a0cc-a5eaeed7c39d"
-
-# Object storage binding
-[[r2_buckets]]
-binding = "AVATAR_STORAGE"
-bucket_name = "pharmx-avatars"
-
-# Key-value storage binding for sessions and caching
-[[kv_namespaces]]
-binding = "SESSIONS"
-id = "your-kv-namespace-id"
-preview_id = "your-preview-kv-namespace-id"
-
-# Durable Object bindings
+# Durable Object bindings (required for the worker to deploy)
 [[durable_objects.bindings]]
 name = "CHAT_ROOMS"
 class_name = "ChatRoom"
@@ -34,17 +17,6 @@ class_name = "MatchmakingQueue"
 [[durable_objects.bindings]]
 name = "LOBBY"
 class_name = "LobbyDO"
-
-# Basic Durable Object configuration
-
-# Analytics binding
-[[analytics_engine_datasets]]
-binding = "ANALYTICS"
-
-# Database migrations
-[[migrations]]
-tag = "v1"
-new_classes = ["ChatRoom", "MatchmakingQueue", "LobbyDO"]
 
 # Cron triggers for cleanup and maintenance
 [triggers]
