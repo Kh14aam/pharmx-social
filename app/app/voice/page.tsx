@@ -40,11 +40,48 @@ export default function VoicePage() {
   const [partner, setPartner] = useState<{ name: string; avatar: string; id: string } | null>(null)
   const [waitingMessageIndex, setWaitingMessageIndex] = useState(0)
   
+  // New state variables for enhanced WebRTC
+  const [callStatus, setCallStatus] = useState<'idle' | 'requesting' | 'searching' | 'connecting' | 'connected' | 'failed'>('idle')
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
+  const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null)
+  const [webSocket, setWebSocket] = useState<WebSocket | null>(null)
+  const [queuePosition, setQueuePosition] = useState<number>(0)
+  const [estimatedWaitTime, setEstimatedWaitTime] = useState<number>(0)
+  const [partnerInfo, setPartnerInfo] = useState<{ id: string; name: string; avatar: string } | null>(null)
+  
+  // Mock user for now - in real app this would come from auth context
+  const user = { sub: 'mock-user-id', email: 'user@example.com' }
+  
   const signalingRef = useRef<SignalingClient | null>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Helper function to send signaling messages
+  const sendSignalingMessage = (message: any) => {
+    if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+      webSocket.send(JSON.stringify(message))
+    }
+  }
+
+  // Helper function to start call timer
+  const startCallTimer = () => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current)
+    }
+    
+    countdownIntervalRef.current = setInterval(() => {
+      setRemainingSeconds(prev => {
+        if (prev <= 1) {
+          endCall()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
 
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -500,6 +537,248 @@ export default function VoicePage() {
       return () => clearInterval(interval)
     }
   }, [state])
+
+  // WebRTC configuration for optimal call quality
+  const rtcConfig = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' }
+    ],
+    iceCandidatePoolSize: 10,
+    iceTransportPolicy: 'all' as const
+  }
+
+  // Audio constraints for WhatsApp/Telegram level quality
+  const audioConstraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    sampleRate: 48000,
+    channelCount: 1,
+    latency: 0.01,
+    googEchoCancellation: true,
+    googAutoGainControl: true,
+    googNoiseSuppression: true,
+    googHighpassFilter: true
+  }
+
+  const startVoiceCall = async () => {
+    try {
+      setCallStatus('requesting')
+      
+      // Request microphone access with optimal constraints
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: audioConstraints,
+        video: false
+      })
+      
+      setLocalStream(stream)
+      setCallStatus('searching')
+      
+      // Connect to matchmaking queue
+      await connectToMatchmaking()
+      
+    } catch (error) {
+      console.error('Failed to start voice call:', error)
+      setCallStatus('idle')
+      
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          toast({
+            title: "Microphone Access Required",
+            description: "Please allow microphone access to make voice calls",
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "Call Failed",
+            description: error.message || "Failed to start voice call",
+            variant: "destructive",
+          })
+        }
+      }
+    }
+  }
+
+  const connectToMatchmaking = async () => {
+    try {
+      const wsUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'
+      const ws = new WebSocket(`${wsUrl.replace('https://', 'wss://')}/matchmaking/ws`)
+      
+      ws.onopen = () => {
+        console.log('Connected to matchmaking queue')
+        setWebSocket(ws)
+        
+        // Send user info to queue
+        ws.send(JSON.stringify({
+          type: 'join',
+          userId: user?.sub,
+          preferences: {
+            audioQuality: 'high',
+            maxWaitTime: 300000 // 5 minutes
+          }
+        }))
+      }
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          handleMatchmakingMessage(data)
+        } catch (error) {
+          console.error('Failed to parse matchmaking message:', error)
+        }
+      }
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error)
+        setCallStatus('idle')
+        toast({
+          title: "Connection Error",
+          description: "Failed to connect to matchmaking service",
+          variant: "destructive",
+        })
+      }
+      
+      ws.onclose = () => {
+        console.log('Disconnected from matchmaking queue')
+        setWebSocket(null)
+        setCallStatus('idle')
+      }
+      
+    } catch (error) {
+      console.error('Failed to connect to matchmaking:', error)
+      setCallStatus('idle')
+    }
+  }
+
+  const handleMatchmakingMessage = (data: any) => {
+    switch (data.type) {
+      case 'queue_joined':
+        setQueuePosition(data.position)
+        setEstimatedWaitTime(data.estimatedWaitTime)
+        break
+        
+      case 'match_found':
+        setCallStatus('connecting')
+        setPartnerInfo({
+          id: data.partner,
+          name: 'Anonymous User',
+          avatar: '/default-avatar.png'
+        })
+        // Create peer connection with optimal settings
+        createPeerConnection(data.roomId)
+        break
+        
+      case 'queue_update':
+        setQueuePosition(data.position)
+        setEstimatedWaitTime(data.estimatedWaitTime)
+        break
+        
+      case 'error':
+        console.error('Matchmaking error:', data.message)
+        setCallStatus('idle')
+        toast({
+          title: "Matchmaking Error",
+          description: data.message || "Failed to find a match",
+          variant: "destructive",
+        })
+        break
+        
+      default:
+        console.warn('Unknown matchmaking message type:', data.type)
+    }
+  }
+
+  const createPeerConnection = (roomId: string) => {
+    try {
+      const pc = new RTCPeerConnection(rtcConfig)
+      setPeerConnection(pc)
+      
+      // Add local stream tracks
+      if (localStream) {
+        localStream.getTracks().forEach(track => {
+          pc.addTrack(track, localStream)
+        })
+      }
+      
+      // Set up event handlers
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          // Send ICE candidate to partner
+          sendSignalingMessage({
+            type: 'ice_candidate',
+            candidate: event.candidate
+          })
+        }
+      }
+      
+      pc.ontrack = (event) => {
+        setRemoteStream(event.streams[0])
+        setCallStatus('connected')
+        startCallTimer()
+      }
+      
+      pc.onconnectionstatechange = () => {
+        console.log('Connection state:', pc.connectionState)
+        if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+          handleCallFailure('Connection lost')
+        }
+      }
+      
+      pc.oniceconnectionstatechange = () => {
+        console.log('ICE connection state:', pc.iceConnectionState)
+        if (pc.iceConnectionState === 'failed') {
+          handleCallFailure('ICE connection failed')
+        }
+      }
+      
+      // Create and send offer
+      createOffer(pc)
+      
+    } catch (error) {
+      console.error('Failed to create peer connection:', error)
+      handleCallFailure('Failed to establish connection')
+    }
+  }
+
+  const createOffer = async (pc: RTCPeerConnection) => {
+    try {
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: false
+      })
+      
+      await pc.setLocalDescription(offer)
+      
+      // Send offer to partner
+      sendSignalingMessage({
+        type: 'offer',
+        offer: offer
+      })
+      
+    } catch (error) {
+      console.error('Failed to create offer:', error)
+      handleCallFailure('Failed to create connection offer')
+    }
+  }
+
+  const handleCallFailure = (reason: string) => {
+    console.error('Call failed:', reason)
+    setCallStatus('idle')
+    setLocalStream(null)
+    setRemoteStream(null)
+    setPeerConnection(null)
+    setWebSocket(null)
+    
+    toast({
+      title: "Call Failed",
+      description: reason,
+      variant: "destructive",
+    })
+  }
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-8rem)] px-4">

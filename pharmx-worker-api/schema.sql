@@ -64,11 +64,30 @@ CREATE TABLE IF NOT EXISTS voice_decisions (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- Create indexes for better performance
-CREATE INDEX idx_chats_user1 ON chats(user1_id);
-CREATE INDEX idx_chats_user2 ON chats(user2_id);
-CREATE INDEX idx_messages_chat ON messages(chat_id);
-CREATE INDEX idx_messages_sender ON messages(sender_id);
-CREATE INDEX idx_calls_users ON calls(a_user_id, b_user_id);
-CREATE INDEX idx_decisions_call ON voice_decisions(call_id);
-CREATE INDEX idx_users_auth0 ON users(auth0_id);
+-- Performance indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_users_auth0_id ON users(auth0_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_calls_user_id ON calls(user_id);
+CREATE INDEX IF NOT EXISTS idx_calls_partner_id ON calls(partner_id);
+CREATE INDEX IF NOT EXISTS idx_calls_created_at ON calls(created_at);
+CREATE INDEX IF NOT EXISTS idx_calls_status ON calls(status);
+
+CREATE INDEX IF NOT EXISTS idx_chats_user1_id ON chats(user1_id);
+CREATE INDEX IF NOT EXISTS idx_chats_user2_id ON chats(user2_id);
+CREATE INDEX IF NOT EXISTS idx_chats_created_at ON chats(created_at);
+CREATE INDEX IF NOT EXISTS idx_chats_updated_at ON chats(updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_voice_decisions_call_id ON voice_decisions(call_id);
+CREATE INDEX IF NOT EXISTS idx_voice_decisions_user_id ON voice_decisions(user_id);
+CREATE INDEX IF NOT EXISTS idx_voice_decisions_decision ON voice_decisions(decision);
+
+-- Composite indexes for complex queries
+CREATE INDEX IF NOT EXISTS idx_chats_users_composite ON chats(user1_id, user2_id);
+CREATE INDEX IF NOT EXISTS idx_calls_users_status ON calls(user_id, partner_id, status);
+CREATE INDEX IF NOT EXISTS idx_messages_chat_created ON messages(chat_id, created_at);
