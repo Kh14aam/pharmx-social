@@ -1,0 +1,26 @@
+name = "pharmx-api-worker"
+main = "src/index.ts"
+compatibility_date = "2024-08-21"
+compatibility_flags = ["nodejs_compat"]
+
+# Durable Object bindings
+[[durable_objects.bindings]]
+name = "CHAT_ROOMS"
+class_name = "ChatRoom"
+
+[[durable_objects.bindings]]
+name = "MATCHMAKING_QUEUE"  
+class_name = "MatchmakingQueue"
+
+[[durable_objects.bindings]]
+name = "LOBBY"
+class_name = "LobbyDO"
+
+# Durable Object migrations (required for free plan)
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatRoom", "MatchmakingQueue", "LobbyDO"]
+
+# Cron triggers
+[triggers]
+crons = ["0 2 * * *"]
