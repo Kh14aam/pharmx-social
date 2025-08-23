@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -38,6 +38,42 @@ export default function OnboardingPage() {
   const [dobDay, setDobDay] = useState("")
   const [dobMonth, setDobMonth] = useState("")
   const [dobYear, setDobYear] = useState("")
+  const [checkingProfile, setCheckingProfile] = useState(true)
+
+  // Check if user already has a profile
+  useEffect(() => {
+    const checkExistingProfile = async () => {
+      try {
+        console.log('[Onboarding] Checking if user already has profile...')
+        const profile = await apiClient.profile.get()
+        if (profile && profile.name) {
+          console.log('[Onboarding] User already has profile, redirecting to app')
+          router.push('/app/voice')
+          return
+        }
+        console.log('[Onboarding] No existing profile, user can proceed with onboarding')
+      } catch (error) {
+        console.log('[Onboarding] Profile check failed (expected for new users):', error)
+        // This is expected for new users, continue with onboarding
+      } finally {
+        setCheckingProfile(false)
+      }
+    }
+
+    checkExistingProfile()
+  }, [router])
+
+  // Show loading while checking profile
+  if (checkingProfile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-gray-300 border-t-gray-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Checking your profile...</p>
+        </div>
+      </div>
+    )
+  }
 
   const {
     register,

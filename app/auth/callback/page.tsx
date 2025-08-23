@@ -11,44 +11,48 @@ function AuthCallbackContent() {
 
   useEffect(() => {
     const handleAuth = async () => {
-      if (isLoading) return
+      console.log('[Auth Callback] Auth state:', { isAuthenticated, isLoading, user: !!user, error: !!error })
+      
+      if (isLoading) {
+        console.log('[Auth Callback] Still loading...')
+        return
+      }
       
       if (error) {
-        console.error('Auth0 error:', error)
+        console.error('[Auth Callback] Auth0 error:', error)
         router.push('/login')
         return
       }
       
       if (isAuthenticated && user) {
+        console.log('[Auth Callback] User authenticated:', user.email)
+        
         try {
           // Get access token from Auth0
           const accessToken = await getAccessTokenSilently()
+          console.log('[Auth Callback] Got access token, length:', accessToken.length)
           
           // Store user info and token
           localStorage.setItem('pharmx_user', JSON.stringify(user))
           localStorage.setItem('pharmx_token', accessToken)
+          console.log('[Auth Callback] Stored user data in localStorage')
           
           // Set auth in API client
           apiClient.setAuth(accessToken, user.sub || '')
+          console.log('[Auth Callback] Set auth in API client')
           
-          // Check if user has completed onboarding
-          try {
-            const profile = await apiClient.profile.get()
-            if (profile && profile.name) {
-              router.push('/app/voice')
-            } else {
-              router.push('/onboarding')
-            }
-          } catch {
-            // No profile yet, go to onboarding
-            router.push('/onboarding')
-          }
+          // For new users, always go to onboarding first
+          // We'll check for existing profile in the onboarding page instead
+          console.log('[Auth Callback] Redirecting to onboarding for new user')
+          router.push('/onboarding')
+          
         } catch (error) {
-          console.error('Auth setup failed:', error)
-          router.push('/login')
+          console.error('[Auth Callback] Auth setup failed:', error)
+          // Even if API setup fails, redirect to onboarding
+          router.push('/onboarding')
         }
       } else if (!isLoading) {
-        // Not authenticated, redirect to login
+        console.log('[Auth Callback] Not authenticated, redirecting to login')
         router.push('/login')
       }
     }

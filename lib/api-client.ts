@@ -15,19 +15,23 @@ export class ApiClient {
 
   // Set authentication token
   setAuth(token: string, sessionId: string) {
+    console.log('[API Client] Setting auth - Token length:', token.length, 'Session ID:', sessionId)
     this.token = token
     this.sessionId = sessionId
     if (typeof window !== 'undefined') {
       localStorage.setItem('pharmx_token', token)
       localStorage.setItem('pharmx_session', sessionId)
+      console.log('[API Client] Stored auth in localStorage')
     }
   }
 
   // Set token only
   setToken(token: string) {
+    console.log('[API Client] Setting token only - Length:', token.length)
     this.token = token
     if (typeof window !== 'undefined') {
       localStorage.setItem('pharmx_token', token)
+      console.log('[API Client] Stored token in localStorage')
     }
   }
 
