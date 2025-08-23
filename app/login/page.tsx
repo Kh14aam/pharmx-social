@@ -7,14 +7,34 @@ import { useAuth0 } from '@auth0/auth0-react'
 
 export default function LoginPage() {
   const [mounted, setMounted] = useState(false)
-  const { loginWithRedirect, isLoading } = useAuth0()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { loginWithRedirect } = useAuth0()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const handleGoogleLogin = () => {
-    loginWithRedirect()
+  const handleGoogleLogin = async () => {
+    try {
+      if (!mounted || isSubmitting) return
+      setIsSubmitting(true)
+      console.log('[Login] Google login clicked')
+      await loginWithRedirect({
+        authorizationParams: {
+          redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+          scope: 'openid profile email',
+          prompt: 'select_account'
+        }
+      })
+    } catch (e) {
+      console.error('[Login] loginWithRedirect failed (retrying minimal):', e)
+      try {
+        await loginWithRedirect()
+      } catch (e2) {
+        console.error('[Login] minimal loginWithRedirect failed:', e2)
+        setIsSubmitting(false)
+      }
+    }
   }
 
   if (!mounted) {
@@ -42,10 +62,11 @@ export default function LoginPage() {
         <div className="max-w-sm mx-auto">
           <Button 
             onClick={handleGoogleLogin}
-            disabled={isLoading}
+            disabled={!mounted || isSubmitting}
+            aria-busy={isSubmitting}
             className="w-full h-14 bg-white text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-full font-medium text-lg shadow-xl hover:shadow-2xl transition-all hover:scale-105 disabled:hover:scale-100 flex items-center justify-center gap-3"
           >
-            {isLoading ? (
+            {isSubmitting ? (
               <>
                 <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
                 Signing in...
