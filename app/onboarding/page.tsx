@@ -158,19 +158,19 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+    <div className="min-h-screen bg-gray-50 flex items-start justify-center p-4 pt-8 sm:pt-16">
+      <div className="w-full max-w-2xl lg:max-w-4xl">
+        <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 lg:p-12">
           {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Complete Your Profile</h1>
-            <p className="text-gray-500 mt-2">All fields are required</p>
+          <div className="text-center mb-8 lg:mb-12">
+            <h1 className="text-3xl lg:text-4xl font-bold text-gray-900">Complete Your Profile</h1>
+            <p className="text-gray-500 mt-2 text-lg">All fields are required</p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Avatar Upload - Matching Users Tab Size */}
-            <div className="flex flex-col items-center space-y-3">
-            <div className="relative w-48 h-48 rounded-lg overflow-hidden border-4 border-gray-200">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 lg:space-y-8">
+            {/* Avatar Upload - Responsive sizing */}
+            <div className="flex flex-col items-center space-y-4">
+              <div className="relative w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 rounded-lg overflow-hidden border-4 border-gray-200">
                 {avatarPreview ? (
                   <div 
                     className="absolute inset-0 bg-cover bg-center"
@@ -180,7 +180,7 @@ export default function OnboardingPage() {
                   />
                 ) : (
                   <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
-                    <User className="w-16 h-16 text-gray-400" />
+                    <User className="w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 text-gray-400" />
                   </div>
                 )}
               </div>
@@ -204,146 +204,157 @@ export default function OnboardingPage() {
               </div>
             </div>
 
-            {/* Name Input */}
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-gray-700 font-medium">
-                Name
-              </Label>
-              <Input
-                id="name"
-                placeholder="Your display name"
-                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                {...register("name")}
-              />
-              {errors.name && (
-                <p className="text-sm text-red-500">{errors.name.message}</p>
-              )}
-            </div>
+            {/* Form Grid for Desktop */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+              {/* Left Column */}
+              <div className="space-y-6">
+                {/* Name Input */}
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-gray-700 font-medium">
+                    Name
+                  </Label>
+                  <Input
+                    id="name"
+                    placeholder="Your display name"
+                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    {...register("name")}
+                  />
+                  {errors.name && (
+                    <p className="text-sm text-red-500">{errors.name.message}</p>
+                  )}
+                </div>
 
-            {/* Gender Selection */}
-            <div className="space-y-2">
-              <Label className="text-gray-700 font-medium">Gender</Label>
-              <RadioGroup
-                onValueChange={(value) => setValue("gender", value as "male" | "female")}
-                className="flex gap-6"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="male" id="male" className="text-black border-gray-400" />
-                  <Label htmlFor="male" className="text-gray-700 cursor-pointer">Male</Label>
+                {/* Gender Selection */}
+                <div className="space-y-2">
+                  <Label className="text-gray-700 font-medium">Gender</Label>
+                  <RadioGroup
+                    onValueChange={(value) => setValue("gender", value as "male" | "female")}
+                    className="flex gap-6"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="male" id="male" className="text-black border-gray-400" />
+                      <Label htmlFor="male" className="text-gray-700 cursor-pointer">Male</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="female" id="female" className="text-black border-gray-400" />
+                      <Label htmlFor="female" className="text-gray-700 cursor-pointer">Female</Label>
+                    </div>
+                  </RadioGroup>
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <Info className="w-3 h-3" /> Cannot be changed later
+                  </p>
+                  {errors.gender && (
+                    <p className="text-sm text-red-500">{errors.gender.message}</p>
+                  )}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="female" id="female" className="text-black border-gray-400" />
-                  <Label htmlFor="female" className="text-gray-700 cursor-pointer">Female</Label>
-                </div>
-              </RadioGroup>
-              <p className="text-xs text-gray-500 flex items-center gap-1">
-                <Info className="w-3 h-3" /> Cannot be changed later
-              </p>
-              {errors.gender && (
-                <p className="text-sm text-red-500">{errors.gender.message}</p>
-              )}
-            </div>
 
-            {/* Date of Birth */}
-            <div className="space-y-2">
-              <Label className="text-gray-700 font-medium">
-                Date of Birth
-              </Label>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="DD"
-                    maxLength={2}
-                    className="w-full text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    {...register("dobDay")}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '')
-                      setDobDay(value)
-                      setValue("dobDay", value)
-                      if (value.length === 2) {
-                        const monthInput = document.querySelector('input[name="dobMonth"]') as HTMLInputElement
-                        monthInput?.focus()
-                      }
-                    }}
-                    value={dobDay}
-                  />
-                </div>
-                <div className="flex-1">
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="MM"
-                    maxLength={2}
-                    className="w-full text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    {...register("dobMonth")}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '')
-                      setDobMonth(value)
-                      setValue("dobMonth", value)
-                      if (value.length === 2) {
-                        const yearInput = document.querySelector('input[name="dobYear"]') as HTMLInputElement
-                        yearInput?.focus()
-                      }
-                    }}
-                    value={dobMonth}
-                  />
-                </div>
-                <div className="flex-[1.5]">
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="YYYY"
-                    maxLength={4}
-                    className="w-full text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    {...register("dobYear")}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '')
-                      setDobYear(value)
-                      setValue("dobYear", value)
-                    }}
-                    value={dobYear}
-                  />
+                {/* Date of Birth */}
+                <div className="space-y-2">
+                  <Label className="text-gray-700 font-medium">
+                    Date of Birth
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="DD"
+                        maxLength={2}
+                        className="w-full text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        {...register("dobDay")}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '')
+                          setDobDay(value)
+                          setValue("dobDay", value)
+                          if (value.length === 2) {
+                            const monthInput = document.querySelector('input[name="dobMonth"]') as HTMLInputElement
+                            monthInput?.focus()
+                          }
+                        }}
+                        value={dobDay}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="MM"
+                        maxLength={2}
+                        className="w-full text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        {...register("dobMonth")}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '')
+                          setDobMonth(value)
+                          setValue("dobMonth", value)
+                          if (value.length === 2) {
+                            const yearInput = document.querySelector('input[name="dobYear"]') as HTMLInputElement
+                            yearInput?.focus()
+                          }
+                        }}
+                        value={dobMonth}
+                      />
+                    </div>
+                    <div className="flex-[1.5]">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="YYYY"
+                        maxLength={4}
+                        className="w-full text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        {...register("dobYear")}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '')
+                          setDobYear(value)
+                          setValue("dobYear", value)
+                        }}
+                        value={dobYear}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">You must be 18 or older</p>
+                  {(errors.dobDay || errors.dobMonth || errors.dobYear) && (
+                    <p className="text-sm text-red-500">
+                      {errors.dobDay?.message || errors.dobMonth?.message || errors.dobYear?.message}
+                    </p>
+                  )}
                 </div>
               </div>
-              <p className="text-xs text-gray-500">You must be 18 or older</p>
-              {(errors.dobDay || errors.dobMonth || errors.dobYear) && (
-                <p className="text-sm text-red-500">
-                  {errors.dobDay?.message || errors.dobMonth?.message || errors.dobYear?.message}
-                </p>
-              )}
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                {/* Bio */}
+                <div className="space-y-2">
+                  <Label htmlFor="bio" className="text-gray-700 font-medium">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    placeholder="Tell us about yourself..."
+                    className="resize-none h-32 lg:h-40 w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    maxLength={160}
+                    {...register("bio")}
+                  />
+                  <p className="text-xs text-gray-500 text-right">
+                    {watchedFields.bio?.length || 0}/160 characters
+                  </p>
+                  {errors.bio && (
+                    <p className="text-sm text-red-500">{errors.bio.message}</p>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Bio */}
-            <div className="space-y-2">
-              <Label htmlFor="bio" className="text-gray-700 font-medium">Bio</Label>
-              <Textarea
-                id="bio"
-                placeholder="Tell us about yourself..."
-                className="resize-none h-24 w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                maxLength={160}
-                {...register("bio")}
-              />
-              <p className="text-xs text-gray-500 text-right">
-                {watchedFields.bio?.length || 0}/160 characters
-              </p>
-              {errors.bio && (
-                <p className="text-sm text-red-500">{errors.bio.message}</p>
-              )}
+            {/* Submit Button - Full width on mobile, centered on desktop */}
+            <div className="pt-4">
+              <Button 
+                type="submit"
+                className="w-full lg:w-auto lg:px-12 bg-black hover:bg-gray-900 text-white font-semibold py-3 rounded-lg transition-colors"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Creating Profile..." : "Complete Profile"}
+              </Button>
             </div>
-
-            {/* Submit Button */}
-            <Button 
-              type="submit"
-              className="w-full bg-black hover:bg-gray-900 text-white font-semibold py-3 rounded-lg transition-colors"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Creating Profile..." : "Complete Profile"}
-            </Button>
           </form>
         </div>
       </div>
