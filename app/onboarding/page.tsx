@@ -40,6 +40,19 @@ export default function OnboardingPage() {
   const [dobYear, setDobYear] = useState("")
   const [checkingProfile, setCheckingProfile] = useState(true)
 
+  // All React hooks must be called at the top level
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setValue,
+    watch,
+  } = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
+  })
+
+  const watchedFields = watch()
+
   // Check if user already has a profile
   useEffect(() => {
     const checkExistingProfile = async () => {
@@ -87,18 +100,6 @@ export default function OnboardingPage() {
       </div>
     )
   }
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    setValue,
-    watch,
-  } = useForm<ProfileFormData>({
-    resolver: zodResolver(profileSchema),
-  })
-
-  const watchedFields = watch()
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
