@@ -71,6 +71,8 @@ function AuthCallbackContent() {
           localStorage.setItem('pharmx_token', tokens.id_token)
           localStorage.removeItem('oauth_state') // Clean up
           
+          console.log('[Auth Callback] User authenticated successfully:', user)
+          
           // Check if user has existing profile
           console.log('[Auth Callback] Checking for existing profile...')
           try {
@@ -82,9 +84,11 @@ function AuthCallbackContent() {
               }
             })
             
+            console.log('[Auth Callback] Profile check response status:', profileRes.status)
+            
             if (profileRes.ok) {
               const profileData = await profileRes.json()
-              console.log('[Auth Callback] Profile found:', { hasName: !!profileData.name })
+              console.log('[Auth Callback] Profile found:', profileData)
               
               if (profileData && profileData.name) {
                 // Existing user with profile - go to main app
@@ -93,21 +97,29 @@ function AuthCallbackContent() {
                 router.push('/app/voice')
                 return
               }
+            } else if (profileRes.status === 404) {
+              // No profile found - go to onboarding
+              console.log('[Auth Callback] No profile found (404) - redirecting to onboarding')
+              setHasRedirected(true)
+              router.push('/onboarding')
+              return
+            } else {
+              console.error('[Auth Callback] Profile check failed with status:', profileRes.status)
+              // Still go to onboarding on error
+              setHasRedirected(true)
+              router.push('/onboarding')
+              return
             }
-            
-            // No profile found or profile incomplete - go to onboarding
-            console.log('[Auth Callback] No profile found - redirecting to onboarding')
-            setHasRedirected(true)
-            router.push('/onboarding')
-            return
-            
-          } catch {
+          } catch (error) {
             // Error checking profile (likely new user) - go to onboarding
-            console.log('[Auth Callback] Profile check failed (new user) - redirecting to onboarding')
+            console.log('[Auth Callback] Profile check failed (new user) - redirecting to onboarding:', error)
             setHasRedirected(true)
             router.push('/onboarding')
             return
           }
+        } else {
+          console.error('[Auth Callback] Invalid response format - missing user or id_token')
+          console.log('[Auth Callback] Response data:', data)
         }
 
         console.error('[Auth Callback] Invalid response format')

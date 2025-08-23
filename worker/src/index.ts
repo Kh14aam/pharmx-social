@@ -7,6 +7,11 @@ export default {
     
     // Handle matchmaking endpoint
     if (url.pathname === '/match') {
+      const upgradeHeader = request.headers.get('Upgrade')
+      if (upgradeHeader !== 'websocket') {
+        return new Response('Expected Upgrade: websocket', { status: 426 })
+      }
+      
       const id = env.MATCHMAKER.idFromName('global')
       const matchmaker = env.MATCHMAKER.get(id)
       return matchmaker.fetch(request)
