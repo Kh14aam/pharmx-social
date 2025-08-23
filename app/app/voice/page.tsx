@@ -98,8 +98,23 @@ export default function VoicePage() {
     return () => clearInterval(interval)
   }, [state])
 
+  const endCall = useCallback(() => {
+    // Stop media streams
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop())
+      localStreamRef.current = null
+    }
+    
+    // Clear countdown
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current)
+      countdownIntervalRef.current = null
+    }
+    
+    setState("deciding")
+  }, [])
+
   // Countdown timer for calls
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (state !== "in_call") return
 
@@ -115,7 +130,7 @@ export default function VoicePage() {
 
     countdownIntervalRef.current = interval
     return () => clearInterval(interval)
-  }, [state])
+  }, [state, endCall])
 
   const startFindingVoice = useCallback(async () => {
     try {
@@ -172,21 +187,7 @@ export default function VoicePage() {
     setPartner(null)
   }, [])
 
-  const endCall = useCallback(() => {
-    // Stop media streams
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => track.stop())
-      localStreamRef.current = null
-    }
-    
-    // Clear countdown
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current)
-      countdownIntervalRef.current = null
-    }
-    
-    setState("deciding")
-  }, [])
+
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
