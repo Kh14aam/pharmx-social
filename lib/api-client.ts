@@ -147,6 +147,11 @@ export class ApiClient {
     }
   }
 
+  // Public request method for use in components
+  async request(endpoint: string, options: RequestInit = {}) {
+    return this.request(endpoint, options)
+  }
+
   // Auth endpoints
   auth = {
     // login method removed - we use Auth0 directly now

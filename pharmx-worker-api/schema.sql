@@ -68,6 +68,20 @@ CREATE TABLE IF NOT EXISTS messages (
   FOREIGN KEY (sender_id) REFERENCES users (id)
 );
 
+-- Chat requests table
+CREATE TABLE IF NOT EXISTS chat_requests (
+  id TEXT PRIMARY KEY,
+  sender_id TEXT NOT NULL,
+  receiver_id TEXT NOT NULL,
+  message TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (sender_id) REFERENCES users (id),
+  FOREIGN KEY (receiver_id) REFERENCES users (id),
+  UNIQUE(sender_id, receiver_id)
+);
+
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_calls_caller_id ON calls(caller_id);
@@ -84,3 +98,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id);
 CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_messages_read_at ON messages(read_at);
+CREATE INDEX IF NOT EXISTS idx_chat_requests_sender_id ON chat_requests(sender_id);
+CREATE INDEX IF NOT EXISTS idx_chat_requests_receiver_id ON chat_requests(receiver_id);
+CREATE INDEX IF NOT EXISTS idx_chat_requests_status ON chat_requests(status);
+CREATE INDEX IF NOT EXISTS idx_chat_requests_created_at ON chat_requests(created_at);

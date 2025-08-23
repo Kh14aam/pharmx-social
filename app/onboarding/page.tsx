@@ -178,9 +178,9 @@ export default function OnboardingPage() {
         description: "Your profile has been created successfully. Let's find you a voice chat!",
       })
 
-      // Redirect to main app - users page as specified in the flow
-      console.log('[Onboarding] Profile creation successful - redirecting to users page')
-      router.push("/app/users")
+      // Redirect to main app - voice page as specified in the flow
+      console.log('[Onboarding] Profile creation successful - redirecting to voice page')
+      router.push("/app/voice")
     } catch (error) {
       console.error('[Onboarding] Profile creation error:', error)
       

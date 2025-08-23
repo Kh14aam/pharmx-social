@@ -31,7 +31,7 @@ export default function LoginPage() {
         return
       }
       
-      // Create Google OAuth URL
+      // Create Google OAuth URL - Direct to frontend callback
       const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback')
       const scope = encodeURIComponent('openid profile email')
       const state = Math.random().toString(36).substring(7)

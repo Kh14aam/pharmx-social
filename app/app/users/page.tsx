@@ -69,58 +69,72 @@ export default function UsersPage() {
     e.stopPropagation()
     
     try {
-      // Check if user has membership (in a real app, this would check subscription status)
-      const hasMembership = false // This would come from user's subscription status
+      // Check if user can message this person
+      const canMessageResponse = await apiClient.request(`/users/${user.id}/can-message`, {
+        method: 'POST'
+      })
       
-      if (!hasMembership) {
-        // Show membership popup
-        const note = prompt(`Send a message to ${user.name} (Membership required for messaging):`)
-        if (note && note.trim()) {
-          toast({
-            title: "Membership Required",
-            description: "Upgrade to premium to send messages to other users",
-            variant: "destructive",
-          })
+      if (!canMessageResponse.canMessage) {
+        if (canMessageResponse.membershipRequired) {
+          // Show membership popup
+          const note = prompt(`Send a message to ${user.name} (Membership required for messaging):`, "Hi! I'd like to chat with you.")
+          if (note && note.trim()) {
+            toast({
+              title: "Membership Required",
+              description: "Upgrade to premium to send messages to other users",
+              variant: "destructive",
+            })
+          }
+          return
         }
-        return
       }
       
-      // If user has membership, create chat and redirect
-      const note = prompt(`Send a message to ${user.name}:`)
+      // If user can message (has membership or existing chat), send request
+      const note = prompt(`Send a message to ${user.name}:`, "Hi! I'd like to chat with you.")
       if (note && note.trim()) {
         try {
-          // Create chat with the user
-          await apiClient.chats.create(user.id)
-          
-          // Store chat request in localStorage for demo purposes
-          const stored = JSON.parse(localStorage.getItem("chatRequests") || "[]")
-          stored.push({
-            id: Date.now().toString(),
-            from: user.name,
-            avatar: user.avatar_url,
-            note,
-            time: "Just now",
+          // Send chat request via API
+          await apiClient.request('/chats/request', {
+            method: 'POST',
+            body: JSON.stringify({
+              receiverId: user.id,
+              message: note.trim()
+            })
           })
-          localStorage.setItem("chatRequests", JSON.stringify(stored))
           
           toast({
             title: "Message sent!",
             description: `Your message to ${user.name} has been sent`,
           })
           
-          // Redirect to chats page
+          // Redirect to chats page to show it was sent
           router.push("/app/chats?tab=requests")
         } catch (error) {
-          console.error('Error creating chat:', error)
+          console.error('Error sending chat request:', error)
+          
+          // Handle specific error messages
+          let errorMessage = "Please try again later"
+          if (error instanceof Error) {
+            if (error.message.includes('already exists')) {
+              errorMessage = "You already have a chat with this person"
+              router.push("/app/chats")
+              return
+            } else if (error.message.includes('already sent')) {
+              errorMessage = "You've already sent a message to this person"
+            } else {
+              errorMessage = error.message
+            }
+          }
+          
           toast({
             title: "Failed to send message",
-            description: "Please try again later",
+            description: errorMessage,
             variant: "destructive",
           })
         }
       }
     } catch (error) {
-      console.error('Error handling message:', error)
+      console.error('Error checking message permissions:', error)
       toast({
         title: "Error",
         description: "Failed to process your request",

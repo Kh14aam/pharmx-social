@@ -15,6 +15,16 @@ interface User {
     avatar: string
     id: string
   }
+  joinedAt: number  // Timestamp when user joined queue
+  connectionQuality: number  // Connection quality score
+  region?: string  // User's region for geographic matching
+}
+
+interface QueueStats {
+  totalUsers: number
+  averageWaitTime: number
+  activeMatches: number
+  queueByRegion: Map<string, number>
 }
 
 interface Call {
@@ -57,6 +67,14 @@ export class LobbyDO {
   private calls: Map<string, Call> = new Map()
   private state: DurableObjectState
   private env: any
+  private queueStats: QueueStats = {
+    totalUsers: 0,
+    averageWaitTime: 0,
+    activeMatches: 0,
+    queueByRegion: new Map()
+  }
+  private lastStatsUpdate: number = 0
+  private fairnessBooster: Map<string, number> = new Map() // Tracks how long users have been waiting
 
   constructor(state: DurableObjectState, env: any) {
     this.state = state
@@ -219,10 +237,7 @@ export class LobbyDO {
       }
       
       // If user was in queue, remove them
-      const queueIndex = this.queue.indexOf(userId)
-      if (queueIndex !== -1) {
-        this.queue.splice(queueIndex, 1)
-      }
+      this.removeFromQueue(userId)
       
       // If user had a partner, handle disconnection
       if (existingUser.partner) {
@@ -233,29 +248,30 @@ export class LobbyDO {
           partner.role = undefined
           partner.callId = undefined
           partner.ready = false
-          if (!this.queue.includes(partner.id)) {
-            this.queue.push(partner.id)
-          }
+          this.addToQueue(partner.id)
           this.sendMessage(partner.ws, { type: 'status', state: 'queued' })
         }
       }
     }
 
-  // Add user to system
+  // Add user to system with enhanced tracking
   const user: User = {
     id: userId,
     ws,
     state: 'queued',
-    acceptedCall: false
+    acceptedCall: false,
+    joinedAt: Date.now(),
+    connectionQuality: this.estimateConnectionQuality(ws),
+    region: this.estimateUserRegion()
   }
   this.users.set(userId, user)
-  this.queue.push(userId)
+  this.addToQueue(userId)
 
     // Send queued status
     this.sendMessage(ws, { type: 'status', state: 'queued' })
 
-    // Try to pair if possible
-    await this.tryPair()
+    // Try to pair if possible with fair algorithm
+    await this.tryPairFair()
   }
 
   private async handleAccept(userId: string) {
@@ -297,7 +313,7 @@ export class LobbyDO {
       partner.callId = undefined
       partner.acceptedCall = false
       partner.ready = false
-      this.queue.push(partner.id)
+      this.addToQueue(partner.id)
       
       // Send queued status to partner so they continue searching
       this.sendMessage(partner.ws, { type: 'status', state: 'queued' })
@@ -310,13 +326,13 @@ export class LobbyDO {
     user.callId = undefined
     user.acceptedCall = false
     user.ready = false
-    this.queue.push(userId)
+    this.addToQueue(userId)
     
     // Send queued status to declining user
     this.sendMessage(user.ws, { type: 'status', state: 'queued' })
     
     // Try to pair again with available users
-    await this.tryPair()
+    await this.tryPairFair()
   }
 
   private async handleReady(userId: string) {
@@ -383,10 +399,7 @@ export class LobbyDO {
 
     // Remove from queue if queued
     if (user.state === 'queued') {
-      const index = this.queue.indexOf(userId)
-      if (index !== -1) {
-        this.queue.splice(index, 1)
-      }
+      this.removeFromQueue(userId)
     }
 
     // Handle partner if in call
@@ -403,69 +416,226 @@ export class LobbyDO {
           partner.role = undefined
           partner.callId = undefined
           partner.ready = false
-          this.queue.push(partner.id)
+          this.addToQueue(partner.id)
           this.sendMessage(partner.ws, { type: 'status', state: 'queued' })
-          await this.tryPair()
+          await this.tryPairFair()
         }
       }
     }
+
+    // Update stats
+    this.queueStats.totalUsers = Math.max(0, this.queueStats.totalUsers - 1)
 
     // Remove user
     this.users.delete(userId)
   }
 
-  private async tryPair() {
-    while (this.queue.length >= 2) {
-      const userAId = this.queue.shift()!
-      const userBId = this.queue.shift()!
-
-      const userA = this.users.get(userAId)
-      const userB = this.users.get(userBId)
-
-      if (!userA || !userB) continue
-
-      // Fetch profile data for both users
-      try {
-        const userAProfile = await this.fetchUserProfile(userAId)
-        const userBProfile = await this.fetchUserProfile(userBId)
-        
-        // Store profiles in user objects
-        userA.profile = userAProfile
-        userB.profile = userBProfile
-      } catch (e) {
-        console.error('Failed to fetch user profiles:', e)
-      }
-
-      // Create call record
-      const callId = uuidv4()
-
-      // Set up pairing
-      userA.state = 'connecting'
-      userA.partner = userBId
-      userA.role = 'offerer'
-      userA.callId = callId
-
-      userB.state = 'connecting'
-      userB.partner = userAId
-      userB.role = 'answerer'
-      userB.callId = callId
-
-      // Notify both users with partner profile
-      this.sendMessage(userA.ws, { 
-        type: 'status', 
-        state: 'paired', 
-        role: 'offerer', 
-        callId,
-        partner: userB.profile 
-      })
-      this.sendMessage(userB.ws, { 
-        type: 'status', 
-        state: 'paired', 
-        role: 'answerer', 
-        callId,
-        partner: userA.profile 
-      })
+  // Enhanced queue management for fairness
+  private addToQueue(userId: string) {
+    // Add to main queue
+    this.queue.push(userId)
+    
+    // Track for fairness
+    this.fairnessBooster.set(userId, Date.now())
+    
+    // Update regional stats
+    const user = this.users.get(userId)
+    if (user?.region) {
+      const currentCount = this.queueStats.queueByRegion.get(user.region) || 0
+      this.queueStats.queueByRegion.set(user.region, currentCount + 1)
     }
+    
+    // Update total users
+    this.queueStats.totalUsers = this.users.size
+    
+    console.log(`[LobbyDO] User ${userId} added to queue. Total users: ${this.queueStats.totalUsers}`)
+  }
+
+  // Remove user from queue with cleanup
+  private removeFromQueue(userId: string) {
+    const index = this.queue.indexOf(userId)
+    if (index !== -1) {
+      this.queue.splice(index, 1)
+    }
+    
+    // Clean up fairness tracking
+    this.fairnessBooster.delete(userId)
+    
+    // Update regional stats
+    const user = this.users.get(userId)
+    if (user?.region) {
+      const currentCount = this.queueStats.queueByRegion.get(user.region) || 0
+      this.queueStats.queueByRegion.set(user.region, Math.max(0, currentCount - 1))
+    }
+  }
+
+  // Estimate connection quality based on WebSocket properties
+  private estimateConnectionQuality(ws: WebSocket): number {
+    // In a real implementation, this would analyze:
+    // - RTT measurements
+    // - Packet loss indicators 
+    // - Bandwidth estimates
+    // For now, return a baseline score
+    return 100 // Score out of 100
+  }
+
+  // Estimate user region for geographic matching
+  private estimateUserRegion(): string {
+    // In a real implementation, this would use:
+    // - IP geolocation
+    // - Cloudflare edge location
+    // - User's timezone
+    return 'global' // Default region
+  }
+
+  // Fair matchmaking algorithm optimized for high concurrency
+  private async tryPairFair() {
+    if (this.queue.length < 2) return
+    
+    // Sort queue by fairness score (wait time + quality + region)
+    const sortedQueue = [...this.queue].sort((a, b) => {
+      const userA = this.users.get(a)!
+      const userB = this.users.get(b)!
+      
+      const scoreA = this.calculateMatchingScore(userA)
+      const scoreB = this.calculateMatchingScore(userB)
+      
+      return scoreB - scoreA // Higher score = higher priority
+    })
+    
+    // Process matches in batches for efficiency
+    const batchSize = Math.min(100, Math.floor(sortedQueue.length / 2)) // Process up to 100 pairs at once
+    const processedUsers = new Set<string>()
+    
+    for (let i = 0; i < batchSize && sortedQueue.length - processedUsers.size >= 2; i++) {
+      let userAId: string | null = null
+      let userBId: string | null = null
+      
+      // Find first available user
+      for (const userId of sortedQueue) {
+        if (!processedUsers.has(userId)) {
+          userAId = userId
+          processedUsers.add(userId)
+          break
+        }
+      }
+      
+      if (!userAId) break
+      
+      // Find best match for userA
+      const userA = this.users.get(userAId)!
+      for (const userId of sortedQueue) {
+        if (!processedUsers.has(userId) && userId !== userAId) {
+          const userB = this.users.get(userId)!
+          if (this.areUsersCompatible(userA, userB)) {
+            userBId = userId
+            processedUsers.add(userId)
+            break
+          }
+        }
+      }
+      
+      if (!userBId) {
+        // If no compatible match found, remove from processed to try again later
+        processedUsers.delete(userAId)
+        continue
+      }
+      
+      // Create the match
+      await this.createMatch(userAId, userBId)
+    }
+  }
+
+  // Calculate matching score for fairness
+  private calculateMatchingScore(user: User): number {
+    const waitTime = Date.now() - user.joinedAt
+    const fairnessBonus = this.fairnessBooster.get(user.id) ? Date.now() - this.fairnessBooster.get(user.id)! : 0
+    
+    // Weight factors:
+    // - Wait time (primary factor for fairness)
+    // - Connection quality
+    // - Fairness bonus for users who've been waiting longer
+    const waitScore = Math.min(waitTime / 1000, 300) // Max 300 points for 5 minute wait
+    const qualityScore = user.connectionQuality / 10 // Max 10 points
+    const fairnessScore = Math.min(fairnessBonus / 10000, 50) // Max 50 points
+    
+    return waitScore + qualityScore + fairnessScore
+  }
+
+  // Check if two users are compatible for matching
+  private areUsersCompatible(userA: User, userB: User): boolean {
+    // Basic compatibility checks:
+    // 1. Both users are in queue state
+    if (userA.state !== 'queued' || userB.state !== 'queued') {
+      return false
+    }
+    
+    // 2. Regional preference (prefer same region but allow cross-region)
+    const regionBonus = userA.region === userB.region ? 1 : 0.7
+    
+    // 3. Connection quality compatibility
+    const qualityDiff = Math.abs(userA.connectionQuality - userB.connectionQuality)
+    const qualityCompatible = qualityDiff < 30 // Allow up to 30 point difference
+    
+    return qualityCompatible && regionBonus > 0.5
+  }
+
+  // Create a match between two users
+  private async createMatch(userAId: string, userBId: string) {
+    const userA = this.users.get(userAId)
+    const userB = this.users.get(userBId)
+    
+    if (!userA || !userB) return
+    
+    // Remove from queue
+    this.removeFromQueue(userAId)
+    this.removeFromQueue(userBId)
+    
+    // Fetch profile data for both users
+    try {
+      const userAProfile = await this.fetchUserProfile(userAId)
+      const userBProfile = await this.fetchUserProfile(userBId)
+      
+      userA.profile = userAProfile
+      userB.profile = userBProfile
+    } catch (e) {
+      console.error('Failed to fetch user profiles:', e)
+    }
+    
+    // Create call record
+    const callId = uuidv4()
+    
+    // Set up pairing
+    userA.state = 'connecting'
+    userA.partner = userBId
+    userA.role = 'offerer'
+    userA.callId = callId
+    
+    userB.state = 'connecting'
+    userB.partner = userAId
+    userB.role = 'answerer'
+    userB.callId = callId
+    
+    // Update stats
+    this.queueStats.activeMatches++
+    
+    // Notify both users with partner profile
+    this.sendMessage(userA.ws, { 
+      type: 'status', 
+      state: 'paired', 
+      role: 'offerer', 
+      callId,
+      partner: userB.profile 
+    })
+    this.sendMessage(userB.ws, { 
+      type: 'status', 
+      state: 'paired', 
+      role: 'answerer', 
+      callId,
+      partner: userA.profile 
+    })
+    
+    console.log(`[LobbyDO] Matched ${userAId} with ${userBId}. Active matches: ${this.queueStats.activeMatches}`)
   }
 
   private async startCall(userAId: string, userBId: string) {

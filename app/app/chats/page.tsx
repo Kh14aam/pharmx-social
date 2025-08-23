@@ -18,147 +18,231 @@ import {
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSearchParams } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
+import { apiClient } from "@/lib/api-client"
 
-// Mock data
+// Chat types
 type ChatRequest = {
   id: string
-  from: string
-  avatar: string | null
-  note: string
-  time: string
+  sender_id: string
+  receiver_id: string
+  message: string
+  created_at: string
+  sender_name: string
+  sender_avatar?: string
+  sender_bio?: string
 }
 
-const defaultChatRequests: ChatRequest[] = [
-  {
-    id: "1",
-    from: "Alex Martinez",
-    avatar: null,
-    note: "Hey! Saw your profile and would love to chat about hiking spots",
-    time: "2 hours ago"
-  },
-  {
-    id: "2",
-    from: "Rachel Green",
-    avatar: null,
-    note: "Hi there! Fellow coffee enthusiast here ☕",
-    time: "5 hours ago"
-  }
-]
+type Chat = {
+  id: string
+  partner_id: string
+  partner_name: string
+  partner_avatar?: string
+  last_message?: string
+  last_message_time?: string
+  unread_count: number
+  status: string
+}
 
-const mockConversations = [
-  {
-    id: "1",
-    name: "Sophie Turner",
-    avatar: null,
-    lastMessage: "That sounds great! Let's definitely plan that hike",
-    time: "10:30 AM",
-    unread: 2,
-    online: true
-  },
-  {
-    id: "2",
-    name: "Tom Wilson",
-    avatar: null,
-    lastMessage: "Haha yeah, that was hilarious!",
-    time: "Yesterday",
-    unread: 0,
-    online: false
-  },
-  {
-    id: "3",
-    name: "Emily Chen",
-    avatar: null,
-    lastMessage: "Thanks for the book recommendation",
-    time: "2 days ago",
-    unread: 0,
-    online: true
-  }
-]
-
-const mockMessages = [
-  {
-    id: "1",
-    sender: "Sophie Turner",
-    content: "Hey! How's your day going?",
-    time: "10:15 AM",
-    sent: false
-  },
-  {
-    id: "2",
-    sender: "You",
-    content: "Pretty good! Just finished a morning run. You?",
-    time: "10:20 AM",
-    sent: true,
-    read: true
-  },
-  {
-    id: "3",
-    sender: "Sophie Turner",
-    content: "Nice! I'm planning a hike this weekend",
-    time: "10:25 AM",
-    sent: false
-  },
-  {
-    id: "4",
-    sender: "Sophie Turner",
-    content: "Want to join?",
-    time: "10:26 AM",
-    sent: false
-  },
-  {
-    id: "5",
-    sender: "You",
-    content: "That sounds great! Let's definitely plan that hike",
-    time: "10:30 AM",
-    sent: true,
-    read: false
-  }
-]
+type Message = {
+  id: string
+  sender_id: string
+  content: string
+  type: string
+  created_at: string
+  read_at?: string
+  sender_name: string
+  sender_avatar?: string
+}
 
 function ChatsPageContent() {
   const [selectedChat, setSelectedChat] = useState<string | null>(null)
   const [message, setMessage] = useState("")
-  const [chatRequests, setChatRequests] = useState<ChatRequest[]>(defaultChatRequests)
+  const [chatRequests, setChatRequests] = useState<ChatRequest[]>([])
+  const [chats, setChats] = useState<Chat[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedChatData, setSelectedChatData] = useState<any>(null)
   const searchParams = useSearchParams()
+  const { toast } = useToast()
 
+  // Load data on component mount
   useEffect(() => {
-    const stored: ChatRequest[] = JSON.parse(localStorage.getItem("chatRequests") || "[]")
-    if (stored.length) {
-      setChatRequests(prev => [...prev, ...stored])
-    }
+    loadChatsData()
   }, [])
 
-  const handleAcceptRequest = (id: string) => {
-    alert("Chat request accepted!")
-    setChatRequests(prev => prev.filter(r => r.id !== id))
-    const stored: ChatRequest[] = JSON.parse(localStorage.getItem("chatRequests") || "[]")
-    localStorage.setItem("chatRequests", JSON.stringify(stored.filter((r) => r.id !== id)))
+  // Load chats and requests from API
+  const loadChatsData = async () => {
+    try {
+      setLoading(true)
+      
+      // Load chats
+      const chatsResponse = await apiClient.request('/chats?tab=messages')
+      setChats(chatsResponse.chats || [])
+      
+      // Load requests
+      const requestsResponse = await apiClient.request('/chats?tab=requests')
+      setChatRequests(requestsResponse.requests || [])
+      
+    } catch (error) {
+      console.error('Error loading chats:', error)
+      toast({
+        title: "Error loading chats",
+        description: "Failed to load your conversations",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleDeclineRequest = (id: string) => {
-    alert("Chat request declined.")
-    setChatRequests(prev => prev.filter(r => r.id !== id))
-    const stored: ChatRequest[] = JSON.parse(localStorage.getItem("chatRequests") || "[]")
-    localStorage.setItem("chatRequests", JSON.stringify(stored.filter((r) => r.id !== id)))
+  // Load messages for selected chat
+  const loadChatMessages = async (chatId: string) => {
+    try {
+      const response = await apiClient.request(`/chats/${chatId}`)
+      setSelectedChatData(response.chat)
+      setMessages(response.messages || [])
+    } catch (error) {
+      console.error('Error loading messages:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load messages",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      alert(`Message sent: ${message}`)
+  // Handle chat selection
+  const handleChatSelect = async (chatId: string) => {
+    setSelectedChat(chatId)
+    await loadChatMessages(chatId)
+  }
+
+  const handleAcceptRequest = async (requestId: string) => {
+    try {
+      const response = await apiClient.request(`/chats/request/${requestId}/accept`, {
+        method: 'POST'
+      })
+      
+      toast({
+        title: "Request accepted!",
+        description: "You can now chat with this person",
+      })
+      
+      // Reload data
+      await loadChatsData()
+      
+      // If a chat was created, select it
+      if (response.chatId) {
+        await handleChatSelect(response.chatId)
+      }
+    } catch (error) {
+      console.error('Error accepting request:', error)
+      toast({
+        title: "Error",
+        description: "Failed to accept request",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDeclineRequest = async (requestId: string) => {
+    try {
+      await apiClient.request(`/chats/request/${requestId}/decline`, {
+        method: 'POST'
+      })
+      
+      toast({
+        title: "Request declined",
+        description: "The chat request has been declined",
+      })
+      
+      // Reload data
+      await loadChatsData()
+    } catch (error) {
+      console.error('Error declining request:', error)
+      toast({
+        title: "Error",
+        description: "Failed to decline request",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || !selectedChat) return
+    
+    try {
+      const response = await apiClient.request(`/chats/${selectedChat}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ content: message.trim() })
+      })
+      
+      // Add message to local state
+      setMessages(prev => [...prev, response.message])
       setMessage("")
+      
+      // Update chat in list
+      setChats(prev => prev.map(chat => 
+        chat.id === selectedChat 
+          ? { ...chat, last_message: message.trim(), unread_count: 0 }
+          : chat
+      ))
+    } catch (error) {
+      console.error('Error sending message:', error)
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive",
+      })
     }
   }
 
   const handleCall = () => {
-    alert("Starting voice call...")
+    toast({
+      title: "Voice call",
+      description: "Voice calling feature coming soon!",
+    })
   }
 
   const handleBlock = () => {
-    alert("User blocked")
+    toast({
+      title: "User blocked",
+      description: "This feature will be implemented soon",
+    })
   }
 
   const handleReport = () => {
-    alert("User reported")
+    toast({
+      title: "User reported",
+      description: "This feature will be implemented soon",
+    })
+  }
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+    
+    if (diffInHours < 1) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    } else if (diffInHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    } else if (diffInHours < 48) {
+      return 'Yesterday'
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+    }
+  }
+
+  const getCurrentUserId = () => {
+    // Get current user ID from stored user data
+    const userData = localStorage.getItem('pharmx_user')
+    if (userData) {
+      const user = JSON.parse(userData)
+      return user.sub || user.id
+    }
+    return null
   }
 
   // Mobile view: show chat list or conversation
@@ -188,9 +272,9 @@ function ChatsPageContent() {
             <TabsList className="grid w-full grid-cols-2 bg-muted/50">
               <TabsTrigger value="chats" className="data-[state=active]:bg-background">
                 Messages
-                {mockConversations.filter(c => c.unread > 0).length > 0 && (
+                {chats.filter(c => c.unread_count > 0).length > 0 && (
                   <div className="ml-2 h-5 w-5 bg-primary text-primary-foreground rounded-full text-xs flex items-center justify-center">
-                    {mockConversations.reduce((acc, c) => acc + c.unread, 0)}
+                    {chats.reduce((acc, c) => acc + c.unread_count, 0)}
                   </div>
                 )}
               </TabsTrigger>
@@ -207,96 +291,140 @@ function ChatsPageContent() {
 
           <TabsContent value="chats" className="flex-1 overflow-y-auto m-0 px-2">
             <div className="space-y-1 py-2">
-              {mockConversations.map((conv) => (
-                <div
-                  key={conv.id}
-                  className={`flex items-center p-3 rounded-xl cursor-pointer transition-all ${
-                    selectedChat === conv.id 
-                      ? 'bg-primary/10 hover:bg-primary/15' 
-                      : 'hover:bg-muted/50'
-                  }`}
-                  onClick={() => setSelectedChat(conv.id)}
-                >
-                  <div className="relative">
-                    <Avatar className="h-12 w-12 ring-2 ring-background">
-                      <AvatarImage src={conv.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${conv.name}`} />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                        {conv.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    {conv.online && (
-                      <div className="absolute bottom-0 right-0 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-background" />
+              {loading ? (
+                // Loading skeleton
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center p-3 rounded-xl animate-pulse">
+                    <div className="h-12 w-12 bg-gray-200 rounded-full" />
+                    <div className="flex-1 ml-3 space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-3/4" />
+                      <div className="h-3 bg-gray-200 rounded w-1/2" />
+                    </div>
+                  </div>
+                ))
+              ) : chats.length > 0 ? (
+                chats.map((chat) => (
+                  <div
+                    key={chat.id}
+                    className={`flex items-center p-3 rounded-xl cursor-pointer transition-all ${
+                      selectedChat === chat.id 
+                        ? 'bg-primary/10 hover:bg-primary/15' 
+                        : 'hover:bg-muted/50'
+                    }`}
+                    onClick={() => handleChatSelect(chat.id)}
+                  >
+                    <div className="relative">
+                      <Avatar className="h-12 w-12 ring-2 ring-background">
+                        <AvatarImage src={chat.partner_avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${chat.partner_name}`} />
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                          {chat.partner_name?.split(' ').map(n => n[0]).join('') || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                    
+                    <div className="flex-1 ml-3 min-w-0">
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-semibold truncate">{chat.partner_name}</h3>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {chat.last_message_time ? formatTime(chat.last_message_time) : ''}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        {chat.unread_count === 0 && selectedChat !== chat.id && (
+                          <CheckCheck className="h-3 w-3 text-blue-500" />
+                        )}
+                        <p className="text-sm text-muted-foreground truncate">
+                          {chat.last_message || 'No messages yet'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {chat.unread_count > 0 && (
+                      <div className="ml-2 h-6 w-6 bg-primary text-primary-foreground rounded-full text-xs font-medium flex items-center justify-center">
+                        {chat.unread_count}
+                      </div>
                     )}
                   </div>
-                  
-                  <div className="flex-1 ml-3 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-semibold truncate">{conv.name}</h3>
-                      <span className="text-xs text-muted-foreground ml-2">{conv.time}</span>
-                    </div>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      {conv.unread === 0 && selectedChat !== conv.id && (
-                        <CheckCheck className="h-3 w-3 text-blue-500" />
-                      )}
-                      <p className="text-sm text-muted-foreground truncate">{conv.lastMessage}</p>
-                    </div>
-                  </div>
-                  
-                  {conv.unread > 0 && (
-                    <div className="ml-2 h-6 w-6 bg-primary text-primary-foreground rounded-full text-xs font-medium flex items-center justify-center">
-                      {conv.unread}
-                    </div>
-                  )}
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No conversations yet</p>
+                  <p className="text-sm">Start chatting with someone!</p>
                 </div>
-              ))}
+              )}
             </div>
           </TabsContent>
 
           <TabsContent value="requests" className="flex-1 overflow-y-auto m-0 p-4 space-y-3">
-            {chatRequests.map((request) => (
-              <Card key={request.id} className="p-4 bg-gradient-to-r from-orange-50 to-orange-100/50 dark:from-orange-950/20 dark:to-orange-900/10 border-orange-200 dark:border-orange-800">
-                <div className="flex items-start space-x-3">
-                  <Avatar className="h-11 w-11 ring-2 ring-orange-200 dark:ring-orange-800">
-                    <AvatarImage src={request.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${request.from}`} />
-                    <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-600 text-white">
-                      {request.from.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-semibold">{request.from}</h4>
-                      <span className="text-xs text-muted-foreground">{request.time}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{request.note}</p>
-                    
-                    <div className="flex gap-2 mt-3">
-                      <Button
-                        size="sm"
-                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
-                        onClick={() => handleAcceptRequest(request.id)}
-                      >
-                        Accept
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
-                        onClick={() => handleDeclineRequest(request.id)}
-                      >
-                        Decline
-                      </Button>
+            {loading ? (
+              // Loading skeleton
+              Array.from({ length: 2 }).map((_, i) => (
+                <Card key={i} className="p-4 animate-pulse">
+                  <div className="flex items-start space-x-3">
+                    <div className="h-11 w-11 bg-gray-200 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-1/3" />
+                      <div className="h-3 bg-gray-200 rounded w-full" />
+                      <div className="h-3 bg-gray-200 rounded w-2/3" />
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))
+            ) : chatRequests.length > 0 ? (
+              chatRequests.map((request) => (
+                <Card key={request.id} className="p-4 bg-gradient-to-r from-orange-50 to-orange-100/50 dark:from-orange-950/20 dark:to-orange-900/10 border-orange-200 dark:border-orange-800">
+                  <div className="flex items-start space-x-3">
+                    <Avatar className="h-11 w-11 ring-2 ring-orange-200 dark:ring-orange-800">
+                      <AvatarImage src={request.sender_avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${request.sender_name}`} />
+                      <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-600 text-white">
+                        {request.sender_name?.split(' ').map(n => n[0]).join('') || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-semibold">{request.sender_name}</h4>
+                        <span className="text-xs text-muted-foreground">{formatTime(request.created_at)}</span>
+                      </div>
+                      {request.message && (
+                        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{request.message}</p>
+                      )}
+                      
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
+                          onClick={() => handleAcceptRequest(request.id)}
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
+                          onClick={() => handleDeclineRequest(request.id)}
+                        >
+                          Decline
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No chat requests</p>
+                <p className="text-sm">People you connect with will appear here</p>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
 
       {/* Chat Conversation */}
-      {selectedChat ? (
+      {selectedChat && selectedChatData ? (
         <div className="flex-1 flex flex-col bg-background">
           {/* Chat Header */}
           <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 py-3 flex items-center justify-between">
@@ -310,11 +438,13 @@ function ChatsPageContent() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <Avatar className="h-10 w-10 mr-3 ring-2 ring-background">
-                <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=Sophie Turner`} />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">ST</AvatarFallback>
+                <AvatarImage src={selectedChatData.partner.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${selectedChatData.partner.name}`} />
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                  {selectedChatData.partner.name?.split(' ').map((n: string) => n[0]).join('') || '?'}
+                </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <h3 className="font-semibold">Sophie Turner</h3>
+                <h3 className="font-semibold">{selectedChatData.partner.name}</h3>
                 <div className="flex items-center gap-1">
                   <div className="h-2 w-2 bg-green-500 rounded-full" />
                   <p className="text-xs text-muted-foreground">Active now</p>
@@ -351,52 +481,63 @@ function ChatsPageContent() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/20">
             <div className="max-w-3xl mx-auto space-y-3">
-              {mockMessages.map((msg, index) => (
-                <div
-                  key={msg.id}
-                  className={`flex items-end gap-2 ${msg.sent ? 'justify-end' : 'justify-start'}`}
-                >
-                  {!msg.sent && index === 0 && (
-                    <Avatar className="h-8 w-8 mb-1">
-                      <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=Sophie Turner`} />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs">ST</AvatarFallback>
-                    </Avatar>
-                  )}
-                  {!msg.sent && index > 0 && mockMessages[index - 1].sent && (
-                    <Avatar className="h-8 w-8 mb-1">
-                      <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=Sophie Turner`} />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs">ST</AvatarFallback>
-                    </Avatar>
-                  )}
-                  {!msg.sent && index > 0 && !mockMessages[index - 1].sent && (
-                    <div className="w-8" />
-                  )}
+              {messages.length > 0 ? (
+                messages.map((msg, index) => {
+                  const currentUserId = getCurrentUserId()
+                  const isSent = msg.sender_id === currentUserId
+                  const prevMsg = index > 0 ? messages[index - 1] : null
+                  const showAvatar = !isSent && (!prevMsg || prevMsg.sender_id !== msg.sender_id)
                   
-                  <div className={`group relative max-w-[70%] ${msg.sent ? 'items-end' : 'items-start'}`}>
+                  return (
                     <div
-                      className={`rounded-2xl px-4 py-2.5 ${
-                        msg.sent
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-sm'
-                          : 'bg-background border rounded-bl-sm shadow-sm'
-                      }`}
+                      key={msg.id}
+                      className={`flex items-end gap-2 ${isSent ? 'justify-end' : 'justify-start'}`}
                     >
-                      <p className="text-sm leading-relaxed">{msg.content}</p>
-                    </div>
-                    <div className={`flex items-center gap-1.5 mt-1 px-1 ${
-                      msg.sent ? 'justify-end' : 'justify-start'
-                    }`}>
-                      <span className="text-xs text-muted-foreground">{msg.time}</span>
-                      {msg.sent && (
-                        msg.read ? (
-                          <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
-                        ) : (
-                          <Check className="h-3.5 w-3.5 text-muted-foreground" />
-                        )
+                      {showAvatar && (
+                        <Avatar className="h-8 w-8 mb-1">
+                          <AvatarImage src={msg.sender_avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${msg.sender_name}`} />
+                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs">
+                            {msg.sender_name?.split(' ').map(n => n[0]).join('') || '?'}
+                          </AvatarFallback>
+                        </Avatar>
                       )}
+                      {!isSent && !showAvatar && (
+                        <div className="w-8" />
+                      )}
+                      
+                      <div className={`group relative max-w-[70%] ${isSent ? 'items-end' : 'items-start'}`}>
+                        <div
+                          className={`rounded-2xl px-4 py-2.5 ${
+                            isSent
+                              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-sm'
+                              : 'bg-background border rounded-bl-sm shadow-sm'
+                          }`}
+                        >
+                          <p className="text-sm leading-relaxed">{msg.content}</p>
+                        </div>
+                        <div className={`flex items-center gap-1.5 mt-1 px-1 ${
+                          isSent ? 'justify-end' : 'justify-start'
+                        }`}>
+                          <span className="text-xs text-muted-foreground">{formatTime(msg.created_at)}</span>
+                          {isSent && (
+                            msg.read_at ? (
+                              <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
+                            ) : (
+                              <Check className="h-3.5 w-3.5 text-muted-foreground" />
+                            )
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )
+                })
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No messages yet</p>
+                  <p className="text-sm">Start the conversation!</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -416,7 +557,7 @@ function ChatsPageContent() {
                     placeholder="Type a message..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                     className="pr-10 bg-muted/50 border-0 focus-visible:ring-1 rounded-full py-6"
                   />
                   <Button 
@@ -431,6 +572,7 @@ function ChatsPageContent() {
                   onClick={handleSendMessage}
                   size="icon"
                   className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shrink-0"
+                  disabled={!message.trim()}
                 >
                   <Send className="h-5 w-5" />
                 </Button>

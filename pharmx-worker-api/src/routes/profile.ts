@@ -4,6 +4,10 @@ import { verifyAuth } from '../middleware/auth'
 
 export const profileRoutes = new Hono<{ Bindings: Env }>()
 
+// ... rest of the file stays the same until the end
+
+export default profileRoutes
+
 function normalizeDob(input?: string | null): string | null {
   if (!input) return null
   // Accept YYYY-MM-DD. Reject others to avoid timezone shifts.
@@ -269,4 +273,6 @@ profileRoutes.put('/', verifyAuth, async (c) => {
     }, 500)
   }
 })
+
+export default profileRoutes
 

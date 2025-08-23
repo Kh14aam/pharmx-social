@@ -33,8 +33,265 @@ export default function VoicePage() {
   const localStreamRef = useRef<MediaStream | null>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const wsRef = useRef<WebSocket | null>(null)
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
 
-  // Format time as MM:SS
+  // WebSocket connection management
+  const connectToMatchmaking = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('pharmx_token')
+      if (!token) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to start voice chat",
+          variant: "destructive",
+        })
+        return false
+      }
+
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev/api/v1'
+      const wsUrl = apiBase.replace('https://', 'wss://').replace('http://', 'ws://')
+      
+      console.log('[Voice] Connecting to WebSocket:', `${wsUrl}/match`)
+      
+      const ws = new WebSocket(`${wsUrl}/match`)
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        console.log('[Voice] WebSocket connected')
+        // Send join message with authentication token
+        ws.send(JSON.stringify({ type: 'join', token }))
+      }
+
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data)
+        console.log('[Voice] Received message:', message)
+        handleWebSocketMessage(message)
+      }
+
+      ws.onerror = (error) => {
+        console.error('[Voice] WebSocket error:', error)
+        setState('idle')
+        toast({
+          title: "Connection Error",
+          description: "Failed to connect to voice service",
+          variant: "destructive",
+        })
+      }
+
+      ws.onclose = (event) => {
+        console.log('[Voice] WebSocket closed:', event.code, event.reason)
+        if (state !== 'idle') {
+          setState('idle')
+        }
+      }
+
+      return true
+    } catch (error) {
+      console.error('[Voice] Failed to connect to matchmaking:', error)
+      return false
+    }
+  }, [state, toast])
+
+  // Handle WebSocket messages
+  const handleWebSocketMessage = useCallback((message: any) => {
+    switch (message.type) {
+      case 'connected':
+        console.log('[Voice] Successfully connected to lobby')
+        break
+        
+      case 'status':
+        if (message.state === 'queued') {
+          setState('searching')
+        } else if (message.state === 'paired') {
+          setPartner(message.partner)
+          setState('incoming_call')
+          // If we're the offerer, we'll get the signal to create offer after both accept
+        }
+        break
+        
+      case 'call-accepted':
+        // Both users accepted, start WebRTC setup
+        setupWebRTC()
+        break
+        
+      case 'call-declined':
+        setState('searching')
+        setPartner(null)
+        break
+        
+      case 'offer':
+        handleWebRTCOffer(message.sdp)
+        break
+        
+      case 'answer':
+        handleWebRTCAnswer(message.sdp)
+        break
+        
+      case 'ice':
+        handleICECandidate(message.candidate)
+        break
+        
+      case 'call-started':
+        setState('in_call')
+        setRemainingSeconds(message.remainingSec || 1200)
+        break
+        
+      case 'tick':
+        setRemainingSeconds(message.remainingSec)
+        break
+        
+      case 'call-ended':
+        setState('deciding')
+        cleanupWebRTC()
+        break
+        
+      case 'decision-waiting':
+        // Keep showing waiting state
+        break
+        
+      case 'decision-result':
+        if (message.result === 'stayinchat') {
+          toast({
+            title: "Great!",
+            description: "You can now chat with this person in your messages",
+            variant: "default",
+          })
+          router.push('/app/chats')
+        } else {
+          setState('idle')
+          setPartner(null)
+          setDecision(null)
+        }
+        break
+        
+      case 'error':
+        console.error('[Voice] Server error:', message.message)
+        setState('idle')
+        toast({
+          title: "Error",
+          description: message.message || "An error occurred",
+          variant: "destructive",
+        })
+        break
+    }
+  }, [toast, router])
+
+  // Setup WebRTC connection
+  const setupWebRTC = useCallback(async () => {
+    try {
+      // Create peer connection with optimized configuration
+      const configuration: RTCConfiguration = {
+        iceServers: [
+          { urls: 'stun:stun.cloudflare.com:3478' },
+          { urls: 'stun:stun.l.google.com:19302' }
+        ],
+        iceCandidatePoolSize: 10,
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require'
+      }
+      
+      const peerConnection = new RTCPeerConnection(configuration)
+      peerConnectionRef.current = peerConnection
+      
+      // Add local stream
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStreamRef.current!)
+        })
+      }
+      
+      // Handle remote stream
+      peerConnection.ontrack = (event) => {
+        console.log('[Voice] Received remote track')
+        if (remoteAudioRef.current && event.streams[0]) {
+          remoteAudioRef.current.srcObject = event.streams[0]
+        }
+      }
+      
+      // Handle ICE candidates
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate && wsRef.current) {
+          wsRef.current.send(JSON.stringify({
+            type: 'ice',
+            candidate: event.candidate
+          }))
+        }
+      }
+      
+      // Handle connection state changes
+      peerConnection.onconnectionstatechange = () => {
+        console.log('[Voice] Connection state:', peerConnection.connectionState)
+        if (peerConnection.connectionState === 'connected') {
+          setState('in_call')
+          // Send ready signal to server
+          if (wsRef.current) {
+            wsRef.current.send(JSON.stringify({ type: 'ready' }))
+          }
+        } else if (peerConnection.connectionState === 'failed') {
+          toast({
+            title: "Connection Failed",
+            description: "Voice call connection failed",
+            variant: "destructive",
+          })
+          endCall()
+        }
+      }
+      
+    } catch (error) {
+      console.error('[Voice] Failed to setup WebRTC:', error)
+    }
+  }, [])
+
+  // Handle WebRTC offer
+  const handleWebRTCOffer = useCallback(async (sdp: RTCSessionDescriptionInit) => {
+    if (!peerConnectionRef.current) return
+    
+    try {
+      await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(sdp))
+      const answer = await peerConnectionRef.current.createAnswer()
+      await peerConnectionRef.current.setLocalDescription(answer)
+      
+      if (wsRef.current) {
+        wsRef.current.send(JSON.stringify({
+          type: 'answer',
+          sdp: answer
+        }))
+      }
+    } catch (error) {
+      console.error('[Voice] Failed to handle offer:', error)
+    }
+  }, [])
+
+  // Handle WebRTC answer
+  const handleWebRTCAnswer = useCallback(async (sdp: RTCSessionDescriptionInit) => {
+    if (!peerConnectionRef.current) return
+    
+    try {
+      await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(sdp))
+    } catch (error) {
+      console.error('[Voice] Failed to handle answer:', error)
+    }
+  }, [])
+
+  // Handle ICE candidate
+  const handleICECandidate = useCallback(async (candidate: RTCIceCandidateInit) => {
+    if (!peerConnectionRef.current) return
+    
+    try {
+      await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate))
+    } catch (error) {
+      console.error('[Voice] Failed to add ICE candidate:', error)
+    }
+  }, [])
+
+  // Cleanup WebRTC connection
+  const cleanupWebRTC = useCallback(() => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close()
+      peerConnectionRef.current = null
+    }
+  }, [])
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -124,15 +381,12 @@ export default function VoicePage() {
       
       setState("searching")
       
-      // Simulate finding a match after a delay
-      setTimeout(() => {
-        setPartner({
-          name: 'Demo User',
-          avatar: '/default-avatar.png',
-          id: 'demo-user-123'
-        })
-        setState("incoming_call")
-      }, 3000)
+      // Connect to WebSocket matchmaking
+      const connected = await connectToMatchmaking()
+      if (!connected) {
+        setState("idle")
+        return
+      }
       
     } catch (error) {
       console.error('Failed to start voice search:', error)
@@ -152,24 +406,32 @@ export default function VoicePage() {
         })
       }
     }
-  }, [toast])
+  }, [toast, connectToMatchmaking])
 
   const cancelSearch = useCallback(() => {
     setState("idle")
+    if (wsRef.current) {
+      wsRef.current.send(JSON.stringify({ type: 'leave' }))
+      wsRef.current.close()
+      wsRef.current = null
+    }
   }, [])
 
   const acceptCall = useCallback(async () => {
     setState("connecting")
     
-    // Simulate connecting
-    setTimeout(() => {
-      setState("in_call")
-    }, 2000)
+    if (wsRef.current) {
+      wsRef.current.send(JSON.stringify({ type: 'accept' }))
+    }
   }, [])
 
   const declineCall = useCallback(() => {
     setState("idle")
     setPartner(null)
+    
+    if (wsRef.current) {
+      wsRef.current.send(JSON.stringify({ type: 'decline' }))
+    }
   }, [])
 
   const endCall = useCallback(() => {
@@ -185,8 +447,16 @@ export default function VoicePage() {
       countdownIntervalRef.current = null
     }
     
+    // Cleanup WebRTC
+    cleanupWebRTC()
+    
+    // Notify server
+    if (wsRef.current) {
+      wsRef.current.send(JSON.stringify({ type: 'leave' }))
+    }
+    
     setState("deciding")
-  }, [])
+  }, [cleanupWebRTC])
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
@@ -212,22 +482,14 @@ export default function VoicePage() {
     setDecision(choice)
     setState("waiting_decision")
     
-    // Simulate decision handling
-    setTimeout(() => {
-      if (choice === "stay") {
-        toast({
-          title: "Great!",
-          description: "You can now chat with this person in your messages",
-          variant: "default",
-        })
-        router.push('/app/chats')
-      } else {
-        setState("idle")
-        setPartner(null)
-        setDecision(null)
-      }
-    }, 2000)
-  }, [toast, router])
+    // Send decision to server
+    if (wsRef.current) {
+      wsRef.current.send(JSON.stringify({ 
+        type: 'decision', 
+        choice 
+      }))
+    }
+  }, [])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -238,8 +500,12 @@ export default function VoicePage() {
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current)
       }
+      if (wsRef.current) {
+        wsRef.current.close()
+      }
+      cleanupWebRTC()
     }
-  }, [])
+  }, [cleanupWebRTC])
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-8rem)] px-4">

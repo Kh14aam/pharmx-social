@@ -1,6 +1,12 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 
+// Import route handlers
+import profileRoutes from './routes/profile'
+import { default as usersRoutes } from './routes/users'
+import { default as uploadRoutes } from './routes/upload'
+import { default as chatsRoutes } from './routes/chats'
+
 // Export Durable Objects
 export { MatchmakingQueue } from './durable-objects/MatchmakingQueue'
 export { ChatRoom } from './durable-objects/ChatRoom'
@@ -67,7 +73,7 @@ app.get('/login', (c) => {
 })
 
 // OAuth callback endpoint - Google will redirect here after user consents
-app.get('/oauth/callback', async (c) => {
+app.get('/auth/callback', async (c) => {
   const env = (c.env as unknown) as Env
   const code = c.req.query('code')
   const error = c.req.query('error')
@@ -100,6 +106,26 @@ app.get('/health', (c) => {
 
 // API version prefix
 const api = app.basePath('/api/v1')
+
+// Mount route handlers
+api.route('/profile', profileRoutes)
+api.route('/users', usersRoutes)
+api.route('/upload', uploadRoutes)
+api.route('/chats', chatsRoutes)
+
+// Voice/WebSocket matching endpoint
+api.get('/match', async (c) => {
+  const upgradeHeader = c.req.header('Upgrade')
+  if (upgradeHeader !== 'websocket') {
+    return c.text('Expected Upgrade: websocket', 426)
+  }
+
+  // Get or create Lobby Durable Object
+  const lobbyId = c.env.LOBBY.idFromName('global-lobby')
+  const lobby = c.env.LOBBY.get(lobbyId)
+  
+  return lobby.fetch(c.req.raw)
+})
 
 // OAuth code exchange endpoint
 api.post('/oauth/google/exchange', async (c) => {
