@@ -26,12 +26,10 @@ export default function VoicePage() {
   const [isMuted, setIsMuted] = useState(false)
   const [isLoudSpeaker, setIsLoudSpeaker] = useState(true)
   const [remainingSeconds, setRemainingSeconds] = useState(1200) // 20 minutes
-  const [, setCallId] = useState<string | null>(null)
   const [decision, setDecision] = useState<"stay" | "skip" | null>(null)
   const [partner, setPartner] = useState<{ name: string; avatar: string; id: string } | null>(null)
   const [waitingMessageIndex, setWaitingMessageIndex] = useState(0)
   
-  const pcRef = useRef<RTCPeerConnection | null>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -101,6 +99,7 @@ export default function VoicePage() {
   }, [state])
 
   // Countdown timer for calls
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (state !== "in_call") return
 
