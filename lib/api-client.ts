@@ -149,9 +149,7 @@ export class ApiClient {
 
   // Auth endpoints
   auth = {
-    login: () => {
-      window.location.href = `${API_BASE_URL}/auth/login`
-    },
+    // login method removed - we use Auth0 directly now
     logout: async () => {
       await this.request('/auth/logout', { method: 'POST' })
       this.clearAuth()
