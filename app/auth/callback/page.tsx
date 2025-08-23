@@ -10,7 +10,9 @@ function AuthCallbackContent() {
 
   useEffect(() => {
     const handleAuth = async () => {
+      console.log('[Auth Callback] === AUTH FLOW START ===')
       console.log('[Auth Callback] Auth state:', { isAuthenticated, isLoading, user: !!user, error: !!error })
+      console.log('[Auth Callback] User details:', user)
       
       if (isLoading) {
         console.log('[Auth Callback] Still loading...')
@@ -24,30 +26,37 @@ function AuthCallbackContent() {
       }
       
       if (isAuthenticated && user) {
-        console.log('[Auth Callback] User authenticated:', user.email)
+        console.log('[Auth Callback] ✅ User authenticated:', user.email)
         
         try {
           // Get access token from Auth0
           const accessToken = await getAccessTokenSilently()
-          console.log('[Auth Callback] Got access token, length:', accessToken.length)
+          console.log('[Auth Callback] ✅ Got access token, length:', accessToken.length)
+          console.log('[Auth Callback] Token preview:', accessToken.substring(0, 20) + '...')
           
           // Store user info and token directly from Auth0
           localStorage.setItem('pharmx_user', JSON.stringify(user))
           localStorage.setItem('pharmx_token', accessToken)
-          console.log('[Auth Callback] Stored Auth0 data in localStorage')
+          console.log('[Auth Callback] ✅ Stored Auth0 data in localStorage')
+          
+          // Verify storage worked
+          const storedUser = localStorage.getItem('pharmx_user')
+          const storedToken = localStorage.getItem('pharmx_token')
+          console.log('[Auth Callback] Verification - Stored user:', !!storedUser, 'Stored token:', !!storedToken)
           
           // For new users, go directly to onboarding
           // No Worker API calls needed at this stage
-          console.log('[Auth Callback] Redirecting to onboarding for new user')
+          console.log('[Auth Callback] 🚀 Redirecting to onboarding for new user')
+          console.log('[Auth Callback] === AUTH FLOW END ===')
           router.push('/onboarding')
           
         } catch (error) {
-          console.error('[Auth Callback] Auth setup failed:', error)
+          console.error('[Auth Callback] ❌ Auth setup failed:', error)
           // Even if token retrieval fails, redirect to onboarding
           router.push('/onboarding')
         }
       } else if (!isLoading) {
-        console.log('[Auth Callback] Not authenticated, redirecting to login')
+        console.log('[Auth Callback] ❌ Not authenticated, redirecting to login')
         router.push('/login')
       }
     }

@@ -56,33 +56,47 @@ export default function OnboardingPage() {
   // Check if user already has a profile
   useEffect(() => {
     const checkExistingProfile = async () => {
+      console.log('[Onboarding] === ONBOARDING FLOW START ===')
+      console.log('[Onboarding] Checking if user already has profile...')
+      
+      // Get the stored token from localStorage
+      const token = localStorage.getItem('pharmx_token')
+      const userData = localStorage.getItem('pharmx_user')
+      console.log('[Onboarding] Stored data - Token:', !!token, 'User:', !!userData)
+      
+      if (!token) {
+        console.log('[Onboarding] ❌ No token found, redirecting to login')
+        router.push('/login')
+        return
+      }
+      
+      if (!userData) {
+        console.log('[Onboarding] ❌ No user data found, redirecting to login')
+        router.push('/login')
+        return
+      }
+      
+      console.log('[Onboarding] ✅ Token and user data found')
+      
+      // Set the token in the API client for this session
+      apiClient.setToken(token)
+      console.log('[Onboarding] ✅ Set token in API client')
+      
+      // Check if profile exists
       try {
-        console.log('[Onboarding] Checking if user already has profile...')
-        
-        // Get the stored token from localStorage
-        const token = localStorage.getItem('pharmx_token')
-        if (!token) {
-          console.log('[Onboarding] No token found, redirecting to login')
-          router.push('/login')
-          return
-        }
-        
-        // Set the token in the API client for this session
-        apiClient.setToken(token)
-        
-        // Check if profile exists
         const profile = await apiClient.profile.get()
         if (profile && profile.name) {
-          console.log('[Onboarding] User already has profile, redirecting to app')
+          console.log('[Onboarding] ✅ User already has profile, redirecting to app')
           router.push('/app/voice')
           return
         }
-        console.log('[Onboarding] No existing profile, user can proceed with onboarding')
+        console.log('[Onboarding] ✅ No existing profile, user can proceed with onboarding')
       } catch (error) {
         console.log('[Onboarding] Profile check failed (expected for new users):', error)
         // This is expected for new users, continue with onboarding
       } finally {
         setCheckingProfile(false)
+        console.log('[Onboarding] === ONBOARDING FLOW END ===')
       }
     }
 
