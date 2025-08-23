@@ -18,10 +18,10 @@ class_name = "MatchmakingQueue"
 name = "LOBBY"
 class_name = "LobbyDO"
 
-# Durable Object migrations (required for deployment)
+# Durable Object migrations (required for free plan)
 [[migrations]]
 tag = "v1"
-new_classes = ["ChatRoom", "MatchmakingQueue", "LobbyDO"]
+new_sqlite_classes = ["ChatRoom", "MatchmakingQueue", "LobbyDO"]
 
 # Cron triggers for cleanup and maintenance
 [triggers]
