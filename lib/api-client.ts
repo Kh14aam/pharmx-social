@@ -146,59 +146,59 @@ export class ApiClient {
   // Auth endpoints
   auth = {
     login: () => {
-      window.location.href = `${API_BASE_URL}/api/v1/auth/login`
+      window.location.href = `${API_BASE_URL}/auth/login`
     },
     logout: async () => {
-      await this.request('/api/v1/auth/logout', { method: 'POST' })
+      await this.request('/auth/logout', { method: 'POST' })
       this.clearAuth()
     },
-    verify: () => this.request('/api/v1/auth/verify'),
+    verify: () => this.request('/auth/verify'),
   }
 
   // Profile endpoints
   profile = {
-    get: () => this.request('/api/v1/profile'),
-    update: (data: Record<string, unknown>) => this.request('/api/v1/profile', {
+    get: () => this.request('/profile'),
+    update: (data: Record<string, unknown>) => this.request('/profile', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
     uploadAvatar: async (file: File) => {
       const formData = new FormData()
       formData.append('file', file)
-      return this.request('/api/v1/upload/avatar', {
+      return this.request('/upload/avatar', {
         method: 'POST',
         body: formData,
       })
     },
-    create: (data: Record<string, unknown>) => this.request('/api/v1/profile', {
+    create: (data: Record<string, unknown>) => this.request('/profile', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-    delete: () => this.request('/api/v1/profile', { method: 'DELETE' }),
+    delete: () => this.request('/profile', { method: 'DELETE' }),
   }
 
   // Users endpoints
   users = {
     list: (params?: { limit?: number; offset?: number }) => {
       const query = new URLSearchParams(params as Record<string, string>).toString()
-      return this.request(`/api/v1/users${query ? `?${query}` : ''}`)
+      return this.request(`/users${query ? `?${query}` : ''}`)
     },
-    get: (id: string) => this.request(`/api/v1/users/${id}`),
-    search: (query: string) => this.request(`/api/v1/users/search?q=${encodeURIComponent(query)}`),
+    get: (id: string) => this.request(`/users/${id}`),
+    search: (query: string) => this.request(`/users/search?q=${encodeURIComponent(query)}`),
   }
 
   // Chats endpoints
   chats = {
-    list: () => this.request('/api/v1/chats'),
-    create: (otherUserId: string) => this.request('/api/v1/chats', {
+    list: () => this.request('/chats'),
+    create: (otherUserId: string) => this.request('/chats', {
       method: 'POST',
       body: JSON.stringify({ otherUserId }),
     }),
     getMessages: (chatId: string, params?: { limit?: number; offset?: number }) => {
       const query = new URLSearchParams(params as Record<string, string>).toString()
-      return this.request(`/api/v1/chats/${chatId}/messages${query ? `?${query}` : ''}`)
+      return this.request(`/chats/${chatId}/messages${query ? `?${query}` : ''}`)
     },
-    sendMessage: (chatId: string, content: string) => this.request(`/api/v1/chats/${chatId}/messages`, {
+    sendMessage: (chatId: string, content: string) => this.request(`/chats/${chatId}/messages`, {
       method: 'POST',
       body: JSON.stringify({ content }),
     }),
