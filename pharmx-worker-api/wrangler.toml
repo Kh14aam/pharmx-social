@@ -79,3 +79,4 @@ crons = ["0 2 * * *"]
 # GOOGLE_CLIENT_ID - Google OAuth client ID
 # GOOGLE_CLIENT_SECRET - Google OAuth client secret  
 # GOOGLE_REDIRECT_URI - OAuth redirect URI
+# FRONTEND_URL - Frontend application URL for OAuth redirects

@@ -66,6 +66,29 @@ app.get('/login', (c) => {
   return c.redirect(authUrl.toString(), 302)
 })
 
+// OAuth callback endpoint - Google will redirect here after user consents
+app.get('/oauth/callback', async (c) => {
+  const env = (c.env as unknown) as Env
+  const code = c.req.query('code')
+  const error = c.req.query('error')
+  
+  if (error) {
+    // Redirect to frontend with error
+    const frontendUrl = env.FRONTEND_URL || 'https://chat.pharmx.co.uk'
+    return c.redirect(`${frontendUrl}/auth/callback?error=${error}`, 302)
+  }
+  
+  if (!code) {
+    // Redirect to frontend with error
+    const frontendUrl = env.FRONTEND_URL || 'https://chat.pharmx.co.uk'
+    return c.redirect(`${frontendUrl}/auth/callback?error=missing_code`, 302)
+  }
+  
+  // Redirect to frontend callback with the authorization code
+  const frontendUrl = env.FRONTEND_URL || 'https://chat.pharmx.co.uk'
+  return c.redirect(`${frontendUrl}/auth/callback?code=${code}`, 302)
+})
+
 // Basic health check
 app.get('/health', (c) => {
   return c.json({ 
