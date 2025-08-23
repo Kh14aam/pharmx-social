@@ -17,9 +17,22 @@ export default function LoginPage() {
       if (!mounted || isSubmitting) return
       setIsSubmitting(true)
       
+      // Get Google Client ID from environment
+      const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '646503577233-ruttnmvg7e2dl9mcgn1um9k7lphbjkdt.apps.googleusercontent.com'
+      
+      // Debug log to check if client ID is loaded
+      console.log('[Login] Google Client ID:', googleClientId ? 'Present' : 'Missing')
+      console.log('[Login] Environment check:', process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID)
+      
+      if (!googleClientId) {
+        console.error('[Login] Google Client ID is missing from environment variables')
+        alert('Google Client ID is not configured. Please check environment variables.')
+        setIsSubmitting(false)
+        return
+      }
+      
       // Create Google OAuth URL
-      const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
-      const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback')
+      const redirectUri = encodeURIComponent(window.location.origin + '/login/callback')
       const scope = encodeURIComponent('openid profile email')
       const state = Math.random().toString(36).substring(7)
       
@@ -29,6 +42,8 @@ export default function LoginPage() {
         `response_type=code&` +
         `scope=${scope}&` +
         `state=${state}`
+      
+      console.log('[Login] OAuth URL:', googleOAuthUrl)
       
       // Store state for verification
       localStorage.setItem('oauth_state', state)
