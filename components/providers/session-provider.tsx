@@ -36,24 +36,16 @@ export function Auth0ProviderWrapper({
     const checkExistingSession = async () => {
       try {
         const token = localStorage.getItem('pharmx_token')
-        const sessionId = localStorage.getItem('pharmx_session')
+        const userData = localStorage.getItem('pharmx_user')
         
-        if (token && sessionId) {
-          // Verify token with backend
-          const response = await fetch('/api/auth/verify', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'X-Session-ID': sessionId
-            }
-          })
-          
-          if (response.ok) {
-            const userData = await response.json()
-            setUser(userData.user)
-          } else {
-            // Clear invalid session
+        if (token && userData) {
+          try {
+            const user = JSON.parse(userData)
+            setUser(user)
+          } catch (e) {
+            console.error('Failed to parse user data', e)
             localStorage.removeItem('pharmx_token')
-            localStorage.removeItem('pharmx_session')
+            localStorage.removeItem('pharmx_user')
           }
         }
       } catch (err) {

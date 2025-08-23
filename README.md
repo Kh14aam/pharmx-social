@@ -457,3 +457,53 @@ If you prefer to keep your current architecture:
 Your current setup has a solid foundation but needs these security enhancements to be production-ready. The OAuth flow and JWT implementation are good, but the exposed credentials and missing security measures need immediate attention.
 
 Would you like me to help you implement any of these security improvements?
+
+## 🚨 **Critical Issues to Fix**
+
+### **1. Typo in Variable Names**
+- `NEXT_PUBLIC_AUTHO_CLIENT_ID` should be `NEXT_PUBLIC_AUTH0_CLIENT_ID` (missing "0")
+- `NEXT_PUBLIC_AUTHO_ISSUER_BASE_URL` should be `NEXT_PUBLIC_AUTH0_ISSUER_BASE_URL` (missing "0")
+
+### **2. Missing Critical Variables**
+You're missing these essential variables:
+- `JWT_SECRET` - Required for JWT token signing
+- `AUTH0_DOMAIN` - Required for Auth0 API calls
+
+### **3. Frontend vs Backend Variables**
+Some variables are set as secrets but should be public for the frontend:
+- `NEXT_PUBLIC_*` variables should be **public** (not secrets) since they're exposed to the browser
+- Only backend-only variables should be secrets
+
+## 🔧 **Recommended Setup**
+
+### **Public Variables (for Frontend)**
+```
+<code_block_to_apply_changes_from>
+```
+
+### **Secret Variables (for Backend Only)**
+```
+AUTH0_CLIENT_SECRET=your-secret
+AUTH0_ISSUER_BASE_URL=https://dev-cm857sxeiz2kxcuo.uk.auth0.com
+AUTH0_REDIRECT_URI=https://pharmx-api.kasimhussain333.workers.dev/api/v1/auth/callback
+JWT_SECRET=your-32-character-secret-key
+FRONTEND_URL=https://chat.pharmx.co.uk
+```
+
+## 🎯 **Immediate Actions Needed**
+
+1. **Fix the typos** in your variable names
+2. **Add the missing `JWT_SECRET`** (critical for authentication)
+3. **Move frontend variables to public** (they need to be accessible in the browser)
+4. **Keep backend variables as secrets** (for security)
+
+## ✅ **Current Status**
+
+Your security setup is **much better now** with:
+- ✅ All Auth0 credentials properly secured as secrets
+- ✅ Proper separation of concerns
+- ✅ Encrypted values in Cloudflare
+
+But you need to fix these issues for the app to work properly. The typos and missing `JWT_SECRET` will prevent authentication from functioning.
+
+Would you like me to help you create the correct variable configuration, or do you want to fix these issues in Cloudflare first?

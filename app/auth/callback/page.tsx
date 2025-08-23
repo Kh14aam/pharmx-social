@@ -7,11 +7,17 @@ import { apiClient } from '@/lib/api-client'
 
 function AuthCallbackContent() {
   const router = useRouter()
-  const { isAuthenticated, isLoading, user, getAccessTokenSilently } = useAuth0()
+  const { isAuthenticated, isLoading, user, getAccessTokenSilently, error } = useAuth0()
 
   useEffect(() => {
     const handleAuth = async () => {
       if (isLoading) return
+      
+      if (error) {
+        console.error('Auth0 error:', error)
+        router.push('/login')
+        return
+      }
       
       if (isAuthenticated && user) {
         try {
@@ -48,7 +54,7 @@ function AuthCallbackContent() {
     }
 
     handleAuth()
-  }, [isAuthenticated, isLoading, user, getAccessTokenSilently, router])
+  }, [isAuthenticated, isLoading, user, getAccessTokenSilently, error, router])
 
   if (isLoading) {
     return (
@@ -56,6 +62,24 @@ function AuthCallbackContent() {
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-white">Completing sign in...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-white">Authentication failed</p>
+          <p className="text-white text-sm mt-2">Please try again</p>
+          <button 
+            onClick={() => router.push('/login')}
+            className="mt-4 px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100"
+          >
+            Back to Login
+          </button>
         </div>
       </div>
     )
