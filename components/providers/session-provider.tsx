@@ -35,25 +35,31 @@ export function Auth0ProviderWrapper({
     // Check for existing session on app load
     const checkExistingSession = async () => {
       try {
+        console.log('[Session Provider] Checking for existing session...')
         const token = localStorage.getItem('pharmx_token')
         const userData = localStorage.getItem('pharmx_user')
+        
+        console.log('[Session Provider] Found in localStorage - Token:', !!token, 'User:', !!userData)
         
         if (token && userData) {
           try {
             const user = JSON.parse(userData)
             setUser(user)
-            console.log('[Session Provider] Restored user session:', user.email)
+            console.log('[Session Provider] ✅ Restored user session:', user.email)
           } catch (e) {
-            console.error('Failed to parse user data', e)
+            console.error('[Session Provider] Failed to parse user data:', e)
             localStorage.removeItem('pharmx_token')
             localStorage.removeItem('pharmx_user')
+            setUser(null)
           }
         } else {
           console.log('[Session Provider] No existing session found')
+          setUser(null)
         }
       } catch (err) {
-        console.error('Session check failed:', err)
+        console.error('[Session Provider] Session check failed:', err)
         setError(err as Error)
+        setUser(null)
       } finally {
         setIsLoading(false)
       }
@@ -91,12 +97,10 @@ export function Auth0Provider({ children }: { children: React.ReactNode }) {
       authorizationParams={{
         redirect_uri: typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : '',
         audience: audience,
-        scope: 'openid profile email',
-        connection: 'google-oauth2' // Go directly to Google
+        scope: 'openid profile email'
       }}
       cacheLocation="localstorage"
       useRefreshTokens={true}
-      skipRedirectCallback={false}
     >
       <Auth0ProviderWrapper>
         {children}

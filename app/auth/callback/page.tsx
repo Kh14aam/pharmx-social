@@ -3,13 +3,21 @@
 import { useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth0 } from '@auth0/auth0-react'
+import { useState } from 'react'
 
 function AuthCallbackContent() {
   const router = useRouter()
   const { isAuthenticated, isLoading, user, getAccessTokenSilently, error } = useAuth0()
+  const [hasRedirected, setHasRedirected] = useState(false)
 
   useEffect(() => {
     const handleAuth = async () => {
+      // Prevent multiple redirects
+      if (hasRedirected) {
+        console.log('[Auth Callback] Already redirected, skipping...')
+        return
+      }
+
       console.log('[Auth Callback] === AUTH FLOW START ===')
       console.log('[Auth Callback] Auth state:', { isAuthenticated, isLoading, user: !!user, error: !!error })
       console.log('[Auth Callback] User details:', user)
@@ -21,6 +29,7 @@ function AuthCallbackContent() {
       
       if (error) {
         console.error('[Auth Callback] Auth0 error:', error)
+        setHasRedirected(true)
         router.push('/login')
         return
       }
@@ -48,21 +57,24 @@ function AuthCallbackContent() {
           // No Worker API calls needed at this stage
           console.log('[Auth Callback] 🚀 Redirecting to onboarding for new user')
           console.log('[Auth Callback] === AUTH FLOW END ===')
+          setHasRedirected(true)
           router.push('/onboarding')
           
         } catch (error) {
           console.error('[Auth Callback] ❌ Auth setup failed:', error)
           // Even if token retrieval fails, redirect to onboarding
+          setHasRedirected(true)
           router.push('/onboarding')
         }
       } else if (!isLoading) {
         console.log('[Auth Callback] ❌ Not authenticated, redirecting to login')
+        setHasRedirected(true)
         router.push('/login')
       }
     }
 
     handleAuth()
-  }, [isAuthenticated, isLoading, user, getAccessTokenSilently, error, router])
+  }, [isAuthenticated, isLoading, user, getAccessTokenSilently, error, router, hasRedirected])
 
   if (isLoading) {
     return (
