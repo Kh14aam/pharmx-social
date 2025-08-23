@@ -123,28 +123,29 @@ export default function VoicePage() {
         
       case 'match':
         console.log('[Voice] Match found! Room code:', message.roomCode)
-        // Get user profile for the match
-        const userId = localStorage.getItem('pharmx_user') ? JSON.parse(localStorage.getItem('pharmx_user')!).sub : null
-        if (userId) {
-          // Fetch partner profile
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('pharmx_token')}` }
-          }).then(res => res.json()).then(profile => {
-            setPartner({
-              name: profile.name || 'Anonymous',
-              avatar: profile.avatar_url || '',
-              id: profile.id
+                  // Get user profile for the match
+          const userData = localStorage.getItem('pharmx_user')
+          const userId = userData ? JSON.parse(userData).sub : null
+          if (userId) {
+            // Fetch partner profile
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('pharmx_token')}` }
+            }).then(res => res.json()).then(profile => {
+              setPartner({
+                name: profile.name || 'Anonymous',
+                avatar: profile.avatar_url || '',
+                id: profile.id
+              })
+              setState('incoming_call')
+            }).catch(() => {
+              setPartner({
+                name: 'Anonymous',
+                avatar: '',
+                id: 'unknown'
+              })
+              setState('incoming_call')
             })
-            setState('incoming_call')
-          }).catch(() => {
-            setPartner({
-              name: 'Anonymous',
-              avatar: '',
-              id: 'unknown'
-            })
-            setState('incoming_call')
-          })
-        }
+          }
         break
         
       case 'call-accepted':

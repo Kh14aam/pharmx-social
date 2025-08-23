@@ -67,11 +67,13 @@ function AuthCallbackContent() {
         
         const { user, tokens } = data
         if (user && tokens?.id_token) {
+          // Store the user data and token
           localStorage.setItem('pharmx_user', JSON.stringify(user))
           localStorage.setItem('pharmx_token', tokens.id_token)
           localStorage.removeItem('oauth_state') // Clean up
           
           console.log('[Auth Callback] User authenticated successfully:', user)
+          console.log('[Auth Callback] User ID (sub):', user.sub)
           
           // Check if user has existing profile
           console.log('[Auth Callback] Checking for existing profile...')
@@ -120,11 +122,10 @@ function AuthCallbackContent() {
         } else {
           console.error('[Auth Callback] Invalid response format - missing user or id_token')
           console.log('[Auth Callback] Response data:', data)
+          setHasRedirected(true)
+          router.push('/login')
+          return
         }
-
-        console.error('[Auth Callback] Invalid response format')
-        setHasRedirected(true)
-        router.push('/login')
       } catch (error) {
         console.error('[Auth Callback] Network error:', error)
         setHasRedirected(true)

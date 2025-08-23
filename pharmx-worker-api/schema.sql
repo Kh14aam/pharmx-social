@@ -1,7 +1,7 @@
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
-  auth0_id TEXT UNIQUE,
+  google_id TEXT UNIQUE,
   email TEXT UNIQUE NOT NULL,
   name TEXT,
   avatar_url TEXT,
