@@ -67,7 +67,7 @@ export class ApiClient {
   }
 
   // Make authenticated request
-  private async request(endpoint: string, options: RequestInit = {}) {
+  async request(endpoint: string, options: RequestInit = {}) {
     const headers: Record<string, string> = {
       ...(options.headers as Record<string, string> || {}),
     }
@@ -145,11 +145,6 @@ export class ApiClient {
       }
       throw error
     }
-  }
-
-  // Public request method for use in components
-  async request(endpoint: string, options: RequestInit = {}) {
-    return this.request(endpoint, options)
   }
 
   // Auth endpoints

@@ -42,6 +42,10 @@ type Chat = {
   last_message_time?: string
   unread_count: number
   status: string
+  partner: {
+    name: string
+    avatarUrl?: string
+  }
 }
 
 type Message = {
@@ -62,14 +66,14 @@ function ChatsPageContent() {
   const [chats, setChats] = useState<Chat[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedChatData, setSelectedChatData] = useState<any>(null)
+  const [selectedChatData, setSelectedChatData] = useState<Chat | null>(null)
   const searchParams = useSearchParams()
   const { toast } = useToast()
 
   // Load data on component mount
   useEffect(() => {
     loadChatsData()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load chats and requests from API
   const loadChatsData = async () => {

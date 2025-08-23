@@ -94,7 +94,7 @@ export default function VoicePage() {
   }, [state, toast])
 
   // Handle WebSocket messages
-  const handleWebSocketMessage = useCallback((message: any) => {
+  const handleWebSocketMessage = useCallback((message: { type: string; [key: string]: unknown }) => {
     switch (message.type) {
       case 'connected':
         console.log('[Voice] Successfully connected to lobby')
@@ -104,7 +104,7 @@ export default function VoicePage() {
         if (message.state === 'queued') {
           setState('searching')
         } else if (message.state === 'paired') {
-          setPartner(message.partner)
+          setPartner(message.partner as { name: string; avatar: string; id: string })
           setState('incoming_call')
           // If we're the offerer, we'll get the signal to create offer after both accept
         }
@@ -121,24 +121,24 @@ export default function VoicePage() {
         break
         
       case 'offer':
-        handleWebRTCOffer(message.sdp)
+        handleWebRTCOffer(message.sdp as RTCSessionDescriptionInit)
         break
         
       case 'answer':
-        handleWebRTCAnswer(message.sdp)
+        handleWebRTCAnswer(message.sdp as RTCSessionDescriptionInit)
         break
         
       case 'ice':
-        handleICECandidate(message.candidate)
+        handleICECandidate(message.candidate as RTCIceCandidateInit)
         break
         
       case 'call-started':
         setState('in_call')
-        setRemainingSeconds(message.remainingSec || 1200)
+        setRemainingSeconds((message.remainingSec as number) || 1200)
         break
         
       case 'tick':
-        setRemainingSeconds(message.remainingSec)
+        setRemainingSeconds(message.remainingSec as number)
         break
         
       case 'call-ended':
@@ -170,12 +170,12 @@ export default function VoicePage() {
         setState('idle')
         toast({
           title: "Error",
-          description: message.message || "An error occurred",
+          description: (message.message as string) || "An error occurred",
           variant: "destructive",
         })
         break
     }
-  }, [toast, router])
+  }, [toast, router]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Setup WebRTC connection
   const setupWebRTC = useCallback(async () => {
@@ -241,7 +241,7 @@ export default function VoicePage() {
     } catch (error) {
       console.error('[Voice] Failed to setup WebRTC:', error)
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle WebRTC offer
   const handleWebRTCOffer = useCallback(async (sdp: RTCSessionDescriptionInit) => {
