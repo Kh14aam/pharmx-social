@@ -1,5 +1,4 @@
 import { createMiddleware } from 'hono/factory'
-import type { Env } from '../index'
 
 interface RateLimitConfig {
   windowMs: number
@@ -9,7 +8,7 @@ interface RateLimitConfig {
 }
 
 export const createRateLimit = (config: RateLimitConfig) => {
-  return createMiddleware<{ Bindings: Env }>(async (c, next) => {
+  return createMiddleware(async (c, next) => {
     const ip = c.req.header('CF-Connecting-IP') || 
                c.req.header('X-Forwarded-For') || 
                c.req.header('X-Real-IP') || 

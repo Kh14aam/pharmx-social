@@ -1,7 +1,6 @@
 import { Hono } from 'hono'
-import type { Env } from '../index'
 
-export const authRoutes = new Hono<{ Bindings: Env }>()
+export const authRoutes = new Hono()
 
 // Simple rate limiting (in production, use a proper rate limiting library)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
@@ -35,8 +34,9 @@ authRoutes.get('/verify', async (c) => {
   
   try {
     // Verify Auth0 access token by calling Auth0's userinfo endpoint
-    const issuer = c.env.AUTH0_ISSUER_BASE_URL || ''
-    const resolvedDomain = c.env.AUTH0_DOMAIN || (issuer ? issuer.replace(/^https?:\/\//, '').replace(/\/$/, '') : undefined)
+    const env = c.env as any
+    const issuer = env.AUTH0_ISSUER_BASE_URL || ''
+    const resolvedDomain = env.AUTH0_DOMAIN || (issuer ? issuer.replace(/^https?:\/\//, '').replace(/\/$/, '') : undefined)
     
     if (!resolvedDomain) {
       return c.json({ error: 'Auth0 not configured' }, 500)

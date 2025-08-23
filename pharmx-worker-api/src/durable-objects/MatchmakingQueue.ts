@@ -10,7 +10,7 @@ interface QueuedUser {
   }
 }
 
-export class MatchmakingQueue extends DurableObject {
+export class MatchmakingQueue {
   private queues: Map<string, UserQueue> = new Map()
   private lastAssigned: Map<string, number> = new Map()
   private maxQueueSize = 50000
@@ -19,7 +19,6 @@ export class MatchmakingQueue extends DurableObject {
   private shardCount = 10
 
   constructor(private state: DurableObjectState, private env: any) {
-    super()
     this.initializeShards()
   }
 
@@ -227,7 +226,7 @@ class UserQueue {
     
     // Find users who have been waiting the longest
     const sortedUsers = userEntries
-      .filter(([_, data]) => Date.now() - data.joinedAt <= maxWaitTime)
+      .filter(([, data]) => Date.now() - data.joinedAt <= maxWaitTime)
       .sort((a, b) => a[1].joinedAt - b[1].joinedAt)
     
     if (sortedUsers.length < 2) return null

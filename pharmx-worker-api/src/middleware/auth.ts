@@ -1,8 +1,7 @@
 import { createMiddleware } from 'hono/factory'
 import { jwtVerify, createRemoteJWKSet } from 'jose'
-import type { Env } from '../index'
 
-export const verifyAuth = createMiddleware<{ Bindings: Env }>(async (c, next) => {
+export const verifyAuth = createMiddleware(async (c, next) => {
   const authHeader = c.req.header('Authorization')
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

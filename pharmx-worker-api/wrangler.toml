@@ -72,28 +72,9 @@ new_classes = ["ChatRoom", "MatchmakingQueue", "LobbyDO"]
 min_memory = 128
 max_memory = 512
 
-[env.production.durable_objects.bindings]
-name = "CHAT_ROOMS"
-class_name = "ChatRoom"
-script_name = "pharmx-api"
-
-[env.production.durable_objects.bindings]
-name = "MATCHMAKING_QUEUE"
-class_name = "MatchmakingQueue"
-script_name = "pharmx-api"
-
-[env.production.durable_objects.bindings]
-name = "LOBBY"
-class_name = "LobbyDO"
-script_name = "pharmx-api"
-
 # Analytics and monitoring
-[analytics_engine_datasets]
+[[analytics_engine_datasets]]
 binding = "ANALYTICS"
-
-# WebAssembly modules for performance
-[wasm_modules]
-voice_processing = "./wasm/voice-processing.wasm"
 
 # Cron triggers for maintenance tasks
 [triggers]
