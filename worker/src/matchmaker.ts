@@ -50,6 +50,8 @@ export class MatchmakerDO {
               lastSeen: Date.now()
             }
             
+            console.log('[Matchmaker] User joined:', msg.userId)
+            
             // Try to find a partner
             const partner = this.findPartner(record.userId)
             

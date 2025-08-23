@@ -30,8 +30,8 @@ profileRoutes.get('/', verifyAuth, async (c) => {
   try {
     // Query user from D1 database
     const result = await c.env.DB.prepare(
-      'SELECT * FROM users WHERE id = ?'
-    ).bind(userId).first()
+      'SELECT * FROM users WHERE id = ? OR google_id = ?'
+    ).bind(userId, userId).first()
     
     if (!result) {
       console.log(`[Profile] User ${userId} not found in database`)
@@ -84,14 +84,14 @@ profileRoutes.post('/', verifyAuth, async (c) => {
     // Check if user already exists
     console.log(`[Profile] Checking if user ${userId} exists...`)
     const existing = await c.env.DB.prepare(
-      'SELECT id, email FROM users WHERE id = ?'
-    ).bind(userId).first()
+      'SELECT id, email FROM users WHERE id = ? OR google_id = ?'
+    ).bind(userId, userId).first()
     
     if (existing) {
       console.log(`[Profile] User exists, updating profile...`)
       console.log(`[Profile] Update params - name: ${name}, email: ${userEmail}, gender: ${gender}, dob: ${dob}, bio: ${bio}, location: ${location}, avatarUrl: ${avatarUrl}, imageKey: ${imageKey}`)
       
-      // Update existing user - allow updating all fields
+      // Update existing user - allow updating all fields and ensure google_id is set
       try {
         const result = await c.env.DB.prepare(
           `UPDATE users 
@@ -102,9 +102,10 @@ profileRoutes.post('/', verifyAuth, async (c) => {
                bio = ?, 
                location = ?,
                avatar_url = CASE WHEN ? IS NOT NULL THEN ? ELSE avatar_url END, 
-               image_key = CASE WHEN ? IS NOT NULL THEN ? ELSE image_key END, 
+               image_key = CASE WHEN ? IS NOT NULL THEN ? ELSE image_key END,
+               google_id = CASE WHEN google_id IS NULL THEN ? ELSE google_id END,
                updated_at = CURRENT_TIMESTAMP
-           WHERE id = ?`
+           WHERE id = ? OR google_id = ?`
         ).bind(
           name, 
           userEmail,
@@ -114,7 +115,8 @@ profileRoutes.post('/', verifyAuth, async (c) => {
           location,
           avatarUrl, avatarUrl,
           imageKey, imageKey,
-          userId
+          userId,
+          userId, userId
         ).run()
         
         console.log(`[Profile] Update result:`, result)
@@ -133,10 +135,10 @@ profileRoutes.post('/', verifyAuth, async (c) => {
       console.log(`[Profile] User does not exist, creating new profile...`)
       console.log(`[Profile] Insert params - id: ${userId}, email: ${userEmail}, name: ${name}, gender: ${gender}, dob: ${dob}, bio: ${bio}, location: ${location}, avatarUrl: ${avatarUrl}, imageKey: ${imageKey}`)
       
-      // Create new user - include auth0_id which is same as id for Auth0 users
+      // Create new user - include google_id which is same as id for Google OAuth users
       try {
         const result = await c.env.DB.prepare(
-          `INSERT INTO users (id, auth0_id, email, name, gender, date_of_birth, bio, location, avatar_url, image_key, created_at, updated_at)
+          `INSERT INTO users (id, google_id, email, name, gender, date_of_birth, bio, location, avatar_url, image_key, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
         ).bind(userId, userId, userEmail, name, gender, dob, bio, location, avatarUrl, imageKey).run()
         
@@ -156,8 +158,8 @@ profileRoutes.post('/', verifyAuth, async (c) => {
     
     // Return the updated profile
     const updatedProfile = await c.env.DB.prepare(
-      'SELECT id, email, name, gender, date_of_birth, bio, location, avatar_url, image_key FROM users WHERE id = ?'
-    ).bind(userId).first()
+      'SELECT id, email, name, gender, date_of_birth, bio, location, avatar_url, image_key FROM users WHERE id = ? OR google_id = ?'
+    ).bind(userId, userId).first()
     
     return c.json({ 
       success: true,
@@ -258,8 +260,8 @@ profileRoutes.put('/', verifyAuth, async (c) => {
     
     // Return the updated profile
     const updatedProfile = await c.env.DB.prepare(
-      'SELECT id, email, name, gender, date_of_birth, bio, location, avatar_url, image_key FROM users WHERE id = ?'
-    ).bind(userId).first()
+      'SELECT id, email, name, gender, date_of_birth, bio, location, avatar_url, image_key FROM users WHERE id = ? OR google_id = ?'
+    ).bind(userId, userId).first()
     
     return c.json({ 
       success: true,

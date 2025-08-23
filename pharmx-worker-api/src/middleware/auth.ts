@@ -41,9 +41,16 @@ export const verifyAuth = createMiddleware<{ Bindings: Env; Variables: { userId:
       return c.json({ error: 'Token expired' }, 401)
     }
     
-    // Extract user ID and email
+    // Extract user ID and email from Google OAuth token
     const userId = decodedPayload.sub || decodedPayload.user_id || decodedPayload.userId
     const userEmail = decodedPayload.email
+    
+    console.log('[Auth] Token payload:', { 
+      sub: decodedPayload.sub, 
+      email: decodedPayload.email,
+      name: decodedPayload.name,
+      exp: decodedPayload.exp 
+    })
     
     if (!userId) {
       console.log('[Auth] No user ID found in token')
