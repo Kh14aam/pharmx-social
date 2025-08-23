@@ -3,12 +3,10 @@
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import Image from "next/image"
-import { useAuth0 } from '@auth0/auth0-react'
 
 export default function LoginPage() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { loginWithRedirect } = useAuth0()
 
   useEffect(() => {
     setMounted(true)
@@ -18,22 +16,12 @@ export default function LoginPage() {
     try {
       if (!mounted || isSubmitting) return
       setIsSubmitting(true)
-      console.log('[Login] Google login clicked')
-      await loginWithRedirect({
-        authorizationParams: {
-          redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-          scope: 'openid profile email',
-          prompt: 'select_account'
-        }
-      })
+      const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://pharmx-api.kasimhussain333.workers.dev'
+      const url = `${apiBase}/login`
+      window.location.href = url
     } catch (e) {
-      console.error('[Login] loginWithRedirect failed (retrying minimal):', e)
-      try {
-        await loginWithRedirect()
-      } catch (e2) {
-        console.error('[Login] minimal loginWithRedirect failed:', e2)
-        setIsSubmitting(false)
-      }
+      console.error('[Login] redirect failed:', e)
+      setIsSubmitting(false)
     }
   }
 

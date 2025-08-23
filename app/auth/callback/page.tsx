@@ -1,115 +1,73 @@
 'use client'
 
 import { useEffect, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth0 } from '@auth0/auth0-react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
 function AuthCallbackContent() {
   const router = useRouter()
-  const { isAuthenticated, isLoading, user, getAccessTokenSilently, error } = useAuth0()
+  const searchParams = useSearchParams()
   const [hasRedirected, setHasRedirected] = useState(false)
 
   useEffect(() => {
     const handleAuth = async () => {
-      // Prevent multiple redirects
-      if (hasRedirected) {
-        console.log('[Auth Callback] Already redirected, skipping...')
-        return
-      }
+      if (hasRedirected) return
 
-      console.log('[Auth Callback] === AUTH FLOW START ===')
-      console.log('[Auth Callback] Auth state:', { isAuthenticated, isLoading, user: !!user, error: !!error })
-      console.log('[Auth Callback] User details:', user)
-      
-      if (isLoading) {
-        console.log('[Auth Callback] Still loading...')
-        return
-      }
-      
+      const code = searchParams.get('code')
+      const error = searchParams.get('error')
+
       if (error) {
-        console.error('[Auth Callback] Auth0 error:', error)
         setHasRedirected(true)
         router.push('/login')
         return
       }
-      
-      if (isAuthenticated && user) {
-        console.log('[Auth Callback] ✅ User authenticated:', user.email)
-        
-        try {
-          // Get access token from Auth0
-          const accessToken = await getAccessTokenSilently()
-          console.log('[Auth Callback] ✅ Got access token, length:', accessToken.length)
-          console.log('[Auth Callback] Token preview:', accessToken.substring(0, 20) + '...')
-          
-          // Store user info and token directly from Auth0
-          localStorage.setItem('pharmx_user', JSON.stringify(user))
-          localStorage.setItem('pharmx_token', accessToken)
-          console.log('[Auth Callback] ✅ Stored Auth0 data in localStorage')
-          
-          // Verify storage worked
-          const storedUser = localStorage.getItem('pharmx_user')
-          const storedToken = localStorage.getItem('pharmx_token')
-          console.log('[Auth Callback] Verification - Stored user:', !!storedUser, 'Stored token:', !!storedToken)
-          
-          // For new users, go directly to onboarding
-          // No Worker API calls needed at this stage
-          console.log('[Auth Callback] 🚀 Redirecting to onboarding for new user')
-          console.log('[Auth Callback] === AUTH FLOW END ===')
+
+      if (!code) {
+        setHasRedirected(true)
+        router.push('/login')
+        return
+      }
+
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || ''
+        const res = await fetch(`${apiBase}/oauth/google/exchange`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        })
+
+        if (!res.ok) {
           setHasRedirected(true)
-          router.push('/onboarding')
-          
-        } catch (error) {
-          console.error('[Auth Callback] ❌ Auth setup failed:', error)
-          // Even if token retrieval fails, redirect to onboarding
-          setHasRedirected(true)
-          router.push('/onboarding')
+          router.push('/login')
+          return
         }
-      } else if (!isLoading) {
-        console.log('[Auth Callback] ❌ Not authenticated, redirecting to login')
+
+        const data = await res.json()
+        const { user, tokens } = data
+        if (user && tokens?.id_token) {
+          localStorage.setItem('pharmx_user', JSON.stringify(user))
+          localStorage.setItem('pharmx_token', tokens.id_token)
+          setHasRedirected(true)
+          router.push('/onboarding')
+          return
+        }
+
+        setHasRedirected(true)
+        router.push('/login')
+      } catch (e) {
         setHasRedirected(true)
         router.push('/login')
       }
     }
 
     handleAuth()
-  }, [isAuthenticated, isLoading, user, getAccessTokenSilently, error, router, hasRedirected])
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white">Completing sign in...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-white">Authentication failed</p>
-          <p className="text-white text-sm mt-2">Please try again</p>
-          <button 
-            onClick={() => router.push('/login')}
-            className="mt-4 px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100"
-          >
-            Back to Login
-          </button>
-        </div>
-      </div>
-    )
-  }
+  }, [searchParams, router, hasRedirected])
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="text-center">
         <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-white">Setting up your account...</p>
+        <p className="text-white">Completing sign in...</p>
       </div>
     </div>
   )

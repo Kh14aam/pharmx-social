@@ -13,6 +13,11 @@ export interface Env {
   MATCHMAKING_QUEUE: DurableObjectNamespace
   CHAT_ROOMS: DurableObjectNamespace
   LOBBY: DurableObjectNamespace
+  // Google OAuth
+  GOOGLE_CLIENT_ID?: string
+  GOOGLE_CLIENT_SECRET?: string
+  GOOGLE_REDIRECT_URI?: string
+  // Legacy fields retained for compatibility (not used for Google OAuth)
   AUTH0_DOMAIN?: string
   AUTH0_CLIENT_ID?: string
   AUTH0_CLIENT_SECRET?: string
@@ -46,6 +51,28 @@ app.use('/*', cors({
   credentials: true,
 }))
 
+// Google OAuth: Redirect to Google consent
+app.get('/login', (c) => {
+  const env = (c.env as unknown) as Env
+  const clientId = env.GOOGLE_CLIENT_ID
+  const redirectUri = env.GOOGLE_REDIRECT_URI
+
+  if (!clientId || !redirectUri) {
+    return c.json({ error: 'Google OAuth not configured' }, 500)
+  }
+
+  const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
+  authUrl.searchParams.set('client_id', clientId)
+  authUrl.searchParams.set('redirect_uri', redirectUri)
+  authUrl.searchParams.set('response_type', 'code')
+  authUrl.searchParams.set('scope', 'openid email profile')
+  authUrl.searchParams.set('access_type', 'offline')
+  // Optional UX improvements
+  authUrl.searchParams.set('prompt', 'consent')
+
+  return c.redirect(authUrl.toString(), 302)
+})
+
 // Basic health check
 app.get('/health', (c) => {
   return c.json({ 
@@ -57,6 +84,77 @@ app.get('/health', (c) => {
 
 // API version prefix
 const api = app.basePath('/api/v1')
+
+// OAuth code exchange endpoint
+api.post('/oauth/google/exchange', async (c) => {
+  try {
+    const env = (c.env as unknown) as Env
+    const clientId = env.GOOGLE_CLIENT_ID
+    const clientSecret = env.GOOGLE_CLIENT_SECRET
+    const redirectUri = env.GOOGLE_REDIRECT_URI
+
+    if (!clientId || !clientSecret || !redirectUri) {
+      return c.json({ error: 'Google OAuth not configured' }, 500)
+    }
+
+    const body = await c.req.json<{ code?: string }>().catch(() => ({} as { code?: string }))
+    const code = body.code
+    if (!code) {
+      return c.json({ error: 'missing_code' }, 400)
+    }
+
+    // Exchange authorization code for tokens
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    })
+
+    const tokenData = await tokenRes.json<any>()
+    if (!tokenRes.ok || tokenData.error) {
+      return c.json({ error: 'token_exchange_failed', details: tokenData }, 400)
+    }
+
+    const idToken: string | undefined = tokenData.id_token
+    if (!idToken) {
+      return c.json({ error: 'missing_id_token' }, 400)
+    }
+
+    // Decode ID token (base64url) without Node Buffer
+    const parts = idToken.split('.')
+    if (parts.length !== 3) {
+      return c.json({ error: 'invalid_id_token' }, 400)
+    }
+    const base64Url = parts[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    )
+    const payload = JSON.parse(jsonPayload)
+
+    const user = {
+      sub: payload.sub as string | undefined,
+      email: payload.email as string | undefined,
+      name: (payload.name || payload.given_name || payload.email) as string | undefined,
+      picture: payload.picture as string | undefined,
+      email_verified: payload.email_verified as boolean | undefined,
+    }
+
+    return c.json({ user, tokens: tokenData })
+  } catch (err) {
+    console.error('OAuth exchange error:', err)
+    return c.json({ error: 'server_error' }, 500)
+  }
+})
 
 // Basic routes (we'll add the complex ones back gradually)
 api.get('/test', (c) => {

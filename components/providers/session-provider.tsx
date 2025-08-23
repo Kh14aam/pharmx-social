@@ -1,6 +1,5 @@
 'use client'
 
-import { Auth0Provider as Auth0ProviderSDK } from '@auth0/auth0-react'
 import { createContext, useContext, useEffect, useState } from 'react'
 
 interface User {
@@ -22,7 +21,7 @@ const UserContext = createContext<UserContextType>({
   error: null,
 })
 
-export function Auth0ProviderWrapper({
+export function SessionProvider({
   children,
 }: {
   children: React.ReactNode
@@ -35,29 +34,22 @@ export function Auth0ProviderWrapper({
     // Check for existing session on app load
     const checkExistingSession = async () => {
       try {
-        console.log('[Session Provider] Checking for existing session...')
-        const token = localStorage.getItem('pharmx_token')
-        const userData = localStorage.getItem('pharmx_user')
-        
-        console.log('[Session Provider] Found in localStorage - Token:', !!token, 'User:', !!userData)
-        
+        const token = typeof window !== 'undefined' ? localStorage.getItem('pharmx_token') : null
+        const userData = typeof window !== 'undefined' ? localStorage.getItem('pharmx_user') : null
+
         if (token && userData) {
           try {
-            const user = JSON.parse(userData)
-            setUser(user)
-            console.log('[Session Provider] ✅ Restored user session:', user.email)
+            const parsed = JSON.parse(userData)
+            setUser(parsed)
           } catch (e) {
-            console.error('[Session Provider] Failed to parse user data:', e)
             localStorage.removeItem('pharmx_token')
             localStorage.removeItem('pharmx_user')
             setUser(null)
           }
         } else {
-          console.log('[Session Provider] No existing session found')
           setUser(null)
         }
       } catch (err) {
-        console.error('[Session Provider] Session check failed:', err)
         setError(err as Error)
         setUser(null)
       } finally {
@@ -77,34 +69,4 @@ export function Auth0ProviderWrapper({
 
 export function useUser() {
   return useContext(UserContext)
-}
-
-// Main Auth0 Provider Component
-export function Auth0Provider({ children }: { children: React.ReactNode }) {
-  const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN
-  const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID
-  const audience = process.env.NEXT_PUBLIC_AUTH0_AUDIENCE
-
-  if (!domain || !clientId) {
-    console.error('Auth0 configuration missing. Check your environment variables.')
-    return <div>Configuration Error</div>
-  }
-
-  return (
-    <Auth0ProviderSDK
-      domain={domain}
-      clientId={clientId}
-      authorizationParams={{
-        redirect_uri: typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : '',
-        audience: audience,
-        scope: 'openid profile email'
-      }}
-      cacheLocation="localstorage"
-      useRefreshTokens={true}
-    >
-      <Auth0ProviderWrapper>
-        {children}
-      </Auth0ProviderWrapper>
-    </Auth0ProviderSDK>
-  )
 }
