@@ -3,7 +3,6 @@
 import { useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth0 } from '@auth0/auth0-react'
-import { apiClient } from '@/lib/api-client'
 
 function AuthCallbackContent() {
   const router = useRouter()
@@ -32,23 +31,19 @@ function AuthCallbackContent() {
           const accessToken = await getAccessTokenSilently()
           console.log('[Auth Callback] Got access token, length:', accessToken.length)
           
-          // Store user info and token
+          // Store user info and token directly from Auth0
           localStorage.setItem('pharmx_user', JSON.stringify(user))
           localStorage.setItem('pharmx_token', accessToken)
-          console.log('[Auth Callback] Stored user data in localStorage')
+          console.log('[Auth Callback] Stored Auth0 data in localStorage')
           
-          // Set auth in API client
-          apiClient.setAuth(accessToken, user.sub || '')
-          console.log('[Auth Callback] Set auth in API client')
-          
-          // For new users, always go to onboarding first
-          // We'll check for existing profile in the onboarding page instead
+          // For new users, go directly to onboarding
+          // No Worker API calls needed at this stage
           console.log('[Auth Callback] Redirecting to onboarding for new user')
           router.push('/onboarding')
           
         } catch (error) {
           console.error('[Auth Callback] Auth setup failed:', error)
-          // Even if API setup fails, redirect to onboarding
+          // Even if token retrieval fails, redirect to onboarding
           router.push('/onboarding')
         }
       } else if (!isLoading) {

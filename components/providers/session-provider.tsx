@@ -42,11 +42,14 @@ export function Auth0ProviderWrapper({
           try {
             const user = JSON.parse(userData)
             setUser(user)
+            console.log('[Session Provider] Restored user session:', user.email)
           } catch (e) {
             console.error('Failed to parse user data', e)
             localStorage.removeItem('pharmx_token')
             localStorage.removeItem('pharmx_user')
           }
+        } else {
+          console.log('[Session Provider] No existing session found')
         }
       } catch (err) {
         console.error('Session check failed:', err)

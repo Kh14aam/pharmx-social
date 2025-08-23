@@ -45,6 +45,19 @@ export default function OnboardingPage() {
     const checkExistingProfile = async () => {
       try {
         console.log('[Onboarding] Checking if user already has profile...')
+        
+        // Get the stored token from localStorage
+        const token = localStorage.getItem('pharmx_token')
+        if (!token) {
+          console.log('[Onboarding] No token found, redirecting to login')
+          router.push('/login')
+          return
+        }
+        
+        // Set the token in the API client for this session
+        apiClient.setToken(token)
+        
+        // Check if profile exists
         const profile = await apiClient.profile.get()
         if (profile && profile.name) {
           console.log('[Onboarding] User already has profile, redirecting to app')
