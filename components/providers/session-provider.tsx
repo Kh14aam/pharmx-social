@@ -88,10 +88,12 @@ export function Auth0Provider({ children }: { children: React.ReactNode }) {
       authorizationParams={{
         redirect_uri: typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : '',
         audience: audience,
-        scope: 'openid profile email'
+        scope: 'openid profile email',
+        connection: 'google-oauth2' // Go directly to Google
       }}
       cacheLocation="localstorage"
       useRefreshTokens={true}
+      skipRedirectCallback={false}
     >
       <Auth0ProviderWrapper>
         {children}
