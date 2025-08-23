@@ -1,10 +1,11 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { serveStatic } from 'hono/cloudflare-workers'
 
-// Export Durable Objects (required by wrangler.toml)
-export { ChatRoom } from './durable-objects/ChatRoom'
-export { MatchmakingQueue } from './durable-objects/MatchmakingQueue'
-export { LobbyDO } from './durable-objects/LobbyDO'
+// Durable Object imports (required for export)
+import { ChatRoom } from './durable-objects/ChatRoom'
+import { MatchmakingQueue } from './durable-objects/MatchmakingQueue'
+import { LobbyDO } from './durable-objects/LobbyDO'
 
 export interface Env {
   // OAuth Configuration
@@ -23,164 +24,220 @@ export interface Env {
   LOBBY: DurableObjectNamespace
 }
 
-// Create the main Hono app
 const app = new Hono()
 
-// Configure CORS
-app.use('/*', cors({
-  origin: ['https://chat.pharmx.co.uk', 'http://localhost:3000'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+// CORS configuration
+app.use('*', cors({
+  origin: ['https://chat.pharmx.co.uk', 'https://pharmx-api.kasimhussain333.workers.dev', 'http://localhost:3000'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }))
 
-// Google OAuth: Redirect to Google consent
-app.get('/login', (c) => {
-  const env = (c.env as unknown) as Env
-  const clientId = env.GOOGLE_CLIENT_ID
-  const redirectUri = env.GOOGLE_REDIRECT_URI
-
-  if (!clientId || !redirectUri) {
-    return c.json({ error: 'Google OAuth not configured' }, 500)
+// Serve static files (your beautiful frontend)
+app.use('/*', serveStatic({ 
+  root: './public',
+  onNotFound: (path, c) => {
+    console.log(`File not found: ${path}`)
   }
+}))
 
-  const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
-  authUrl.searchParams.set('client_id', clientId)
-  authUrl.searchParams.set('redirect_uri', redirectUri)
-  authUrl.searchParams.set('response_type', 'code')
-  authUrl.searchParams.set('scope', 'openid email profile')
-  authUrl.searchParams.set('access_type', 'offline')
-  // Optional UX improvements
-  authUrl.searchParams.set('prompt', 'consent')
-
-  return c.redirect(authUrl.toString(), 302)
-})
-
-// OAuth callback endpoint - Google will redirect here after user consents
-app.get('/auth/callback', async (c) => {
-  const env = (c.env as unknown) as Env
-  const code = c.req.query('code')
-  const error = c.req.query('error')
-  
-  if (error) {
-    // Redirect to frontend with error
-    const frontendUrl = env.FRONTEND_URL || 'https://chat.pharmx.co.uk'
-    return c.redirect(`${frontendUrl}/auth/callback?error=${error}`, 302)
-  }
-  
-  if (!code) {
-    // Redirect to frontend with error
-    const frontendUrl = env.FRONTEND_URL || 'https://chat.pharmx.co.uk'
-    return c.redirect(`${frontendUrl}/auth/callback?error=missing_code`, 302)
-  }
-  
-  // Redirect to frontend callback with the authorization code
-  const frontendUrl = env.FRONTEND_URL || 'https://chat.pharmx.co.uk'
-  return c.redirect(`${frontendUrl}/auth/callback?code=${code}`, 302)
-})
-
-// Basic health check
+// Health check endpoint
 app.get('/health', (c) => {
+  const env = c.env as any
   return c.json({ 
-    status: 'healthy',
+    status: 'healthy', 
     timestamp: new Date().toISOString(),
-    message: 'PharmX Social API is running'
+    environment: env?.ENVIRONMENT || 'production'
   })
 })
 
-// API version prefix
-const api = app.basePath('/api/v1')
+// Google OAuth login endpoint
+app.get('/login', (c) => {
+  const env = c.env as any
+  const state = crypto.randomUUID()
+  const googleOAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
+  
+  googleOAuthUrl.searchParams.set('client_id', env.GOOGLE_CLIENT_ID || '')
+  googleOAuthUrl.searchParams.set('redirect_uri', env.GOOGLE_REDIRECT_URI || '')
+  googleOAuthUrl.searchParams.set('response_type', 'code')
+  googleOAuthUrl.searchParams.set('scope', 'openid email profile')
+  googleOAuthUrl.searchParams.set('state', state)
+  
+  return c.redirect(googleOAuthUrl.toString())
+})
 
-// OAuth code exchange endpoint
-api.post('/oauth/google/exchange', async (c) => {
+// OAuth callback endpoint
+app.get('/auth/callback', async (c) => {
+  const env = c.env as any
+  const code = c.req.query('code')
+  const state = c.req.query('state')
+  
+  if (!code) {
+    return c.json({ error: 'Authorization code missing' }, 400)
+  }
+  
   try {
-    const env = (c.env as unknown) as Env
-    const clientId = env.GOOGLE_CLIENT_ID
-    const clientSecret = env.GOOGLE_CLIENT_SECRET
-    const redirectUri = env.GOOGLE_REDIRECT_URI
-
-    if (!clientId || !clientSecret || !redirectUri) {
-      return c.json({ error: 'Google OAuth not configured' }, 500)
-    }
-
-    const body = await c.req.json<{ code?: string }>().catch(() => ({} as { code?: string }))
-    const code = body.code
-    if (!code) {
-      return c.json({ error: 'missing_code' }, 400)
-    }
-
-    // Exchange authorization code for tokens
-    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    // Exchange code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
+        client_id: env.GOOGLE_CLIENT_ID || '',
+        client_secret: env.GOOGLE_CLIENT_SECRET || '',
+        redirect_uri: env.GOOGLE_REDIRECT_URI || '',
         grant_type: 'authorization_code',
+        code: code,
       }),
     })
-
-    const tokenData = await tokenRes.json<any>()
-    if (!tokenRes.ok || tokenData.error) {
-      return c.json({ error: 'token_exchange_failed', details: tokenData }, 400)
+    
+    const tokens = await tokenResponse.json() as any
+    
+    if (!tokenResponse.ok) {
+      console.error('Token exchange failed:', tokens)
+      return c.json({ error: 'Failed to exchange authorization code' }, 400)
     }
-
-    const idToken: string | undefined = tokenData.id_token
-    if (!idToken) {
-      return c.json({ error: 'missing_id_token' }, 400)
+    
+    // Get user info
+    const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    })
+    
+    const userInfo = await userResponse.json() as any
+    
+    if (!userResponse.ok) {
+      console.error('User info failed:', userInfo)
+      return c.json({ error: 'Failed to get user information' }, 400)
     }
-
-    // Decode ID token (base64url) without Node Buffer
-    const parts = idToken.split('.')
-    if (parts.length !== 3) {
-      return c.json({ error: 'invalid_id_token' }, 400)
-    }
-    const base64Url = parts[1]
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    )
-    const payload = JSON.parse(jsonPayload)
-
-    const user = {
-      sub: payload.sub as string | undefined,
-      email: payload.email as string | undefined,
-      name: (payload.name || payload.given_name || payload.email) as string | undefined,
-      picture: payload.picture as string | undefined,
-      email_verified: payload.email_verified as boolean | undefined,
-    }
-
-    return c.json({ user, tokens: tokenData })
-  } catch (err) {
-    console.error('OAuth exchange error:', err)
-    return c.json({ error: 'server_error' }, 500)
+    
+    // Create JWT token
+    const jwt = await createJWT({
+      sub: userInfo.id,
+      email: userInfo.email,
+      name: userInfo.name,
+      picture: userInfo.picture,
+    }, env.JWT_SECRET || '')
+    
+    // Redirect to frontend with token
+    const redirectUrl = new URL('/auth/callback', env.FRONTEND_URL || 'https://pharmx-api.kasimhussain333.workers.dev')
+    redirectUrl.searchParams.set('token', jwt)
+    
+    return c.redirect(redirectUrl.toString())
+  } catch (error) {
+    console.error('OAuth callback error:', error)
+    return c.json({ error: 'Authentication failed' }, 500)
   }
 })
 
-// Basic routes (we'll add the complex ones back gradually)
-api.get('/test', (c) => {
-  return c.json({ message: 'API is working' })
+// OAuth exchange endpoint for frontend
+app.post('/api/v1/oauth/google/exchange', async (c) => {
+  const env = c.env as any
+  const { code, state } = await c.req.json()
+  
+  if (!code) {
+    return c.json({ error: 'Authorization code missing' }, 400)
+  }
+  
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: env.GOOGLE_CLIENT_ID || '',
+        client_secret: env.GOOGLE_CLIENT_SECRET || '',
+        redirect_uri: env.GOOGLE_REDIRECT_URI || '',
+        grant_type: 'authorization_code',
+        code: code,
+      }),
+    })
+    
+    const tokens = await tokenResponse.json() as any
+    
+    if (!tokenResponse.ok) {
+      console.error('Token exchange failed:', tokens)
+      return c.json({ error: 'Failed to exchange authorization code' }, 400)
+    }
+    
+    // Get user info
+    const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    })
+    
+    const userInfo = await userResponse.json() as any
+    
+    if (!userResponse.ok) {
+      console.error('User info failed:', userInfo)
+      return c.json({ error: 'Failed to get user information' }, 400)
+    }
+    
+    // Create JWT token
+    const jwt = await createJWT({
+      sub: userInfo.id,
+      email: userInfo.email,
+      name: userInfo.name,
+      picture: userInfo.picture,
+    }, env.JWT_SECRET || '')
+    
+    return c.json({
+      success: true,
+      token: jwt,
+      user: {
+        id: userInfo.id,
+        email: userInfo.email,
+        name: userInfo.name,
+        picture: userInfo.picture,
+      }
+    })
+  } catch (error) {
+    console.error('OAuth exchange error:', error)
+    return c.json({ error: 'Authentication failed' }, 500)
+  }
 })
 
-// 404 handler
-app.notFound((c) => {
-  return c.json({ error: 'Not Found' }, 404)
-})
+// JWT helper functions
+async function createJWT(payload: any, secret: string): Promise<string> {
+  const header = { alg: 'HS256', typ: 'JWT' }
+  const now = Math.floor(Date.now() / 1000)
+  
+  const jwtPayload = {
+    ...payload,
+    iat: now,
+    exp: now + (24 * 60 * 60), // 24 hours
+  }
+  
+  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+  const encodedPayload = btoa(JSON.stringify(jwtPayload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+  
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`)
+  )
+  
+  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+  
+  return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
+}
 
-// Error handler
-app.onError((err, c) => {
-  console.error(`Error: ${err}`)
-  return c.json({ error: 'Internal Server Error' }, 500)
-})
+// Catch-all for SPA routing - serve index.html for any unmatched routes
+app.get('*', serveStatic({ 
+  path: './public/index.html',
+  onNotFound: (path, c) => {
+    console.log(`SPA fallback for: ${path}`)
+  }
+}))
 
-// Export default handler
-export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    return app.fetch(request, env, ctx)
-  },
-} 
+export default app
+
+// Export Durable Objects (required by wrangler.toml)
+export { ChatRoom, MatchmakingQueue, LobbyDO } 

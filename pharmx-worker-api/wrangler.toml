@@ -23,6 +23,10 @@ class_name = "LobbyDO"
 tag = "v1"
 new_sqlite_classes = ["ChatRoom", "MatchmakingQueue", "LobbyDO"]
 
+# Static asset configuration
+[site]
+bucket = "./public"
+
 # Cron triggers for cleanup and maintenance
 [triggers]
 crons = ["0 2 * * *"]
