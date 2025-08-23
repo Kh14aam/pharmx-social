@@ -23,9 +23,13 @@ class_name = "LobbyDO"
 tag = "v1"
 new_sqlite_classes = ["ChatRoom", "MatchmakingQueue", "LobbyDO"]
 
-# Static asset configuration
-[site]
-bucket = "./public"
+# Static asset configuration (use assets binding for Hono serveStatic)
+assets = { directory = "./public" }
+
+# Routes to serve the app on custom domain
+routes = [
+  { pattern = "chat.pharmx.co.uk/*", zone_name = "pharmx.co.uk" }
+]
 
 # Cron triggers for cleanup and maintenance
 [triggers]
