@@ -83,7 +83,7 @@ export default function OnboardingPage() {
           router.push('/app/voice')
           return
         }
-      } catch (error) {
+      } catch {
         console.log('[Onboarding] Profile check confirmed - no existing profile (expected for new users)')
         // This is expected for new users, continue with onboarding
       }

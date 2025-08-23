@@ -101,7 +101,7 @@ function LoginCallbackContent() {
             router.push('/onboarding')
             return
             
-          } catch (profileError) {
+          } catch {
             // Error checking profile (likely new user) - go to onboarding
             console.log('[Login Callback] Profile check failed (new user) - redirecting to onboarding')
             setHasRedirected(true)

@@ -99,7 +99,6 @@ export default function VoicePage() {
   }, [state])
 
   // Countdown timer for calls
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (state !== "in_call") return
 
@@ -115,6 +114,7 @@ export default function VoicePage() {
 
     countdownIntervalRef.current = interval
     return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state])
 
   const startFindingVoice = useCallback(async () => {
