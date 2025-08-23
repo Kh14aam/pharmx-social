@@ -6,11 +6,6 @@ compatibility_flags = ["nodejs_compat"]
 [site]
 bucket = "./public"
 
-# Add the route to your custom domain
-routes = [
-  { pattern = "chat.pharmx.co.uk/*", zone_name = "pharmx.co.uk" }
-]
-
 # Durable Object bindings
 [[durable_objects.bindings]]
 name = "CHAT_ROOMS"
