@@ -18,6 +18,11 @@ class_name = "MatchmakingQueue"
 name = "LOBBY"
 class_name = "LobbyDO"
 
+# Durable Object migrations (required for deployment)
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatRoom", "MatchmakingQueue", "LobbyDO"]
+
 # Cron triggers for cleanup and maintenance
 [triggers]
 crons = ["0 2 * * *"]
