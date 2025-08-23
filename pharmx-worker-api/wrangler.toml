@@ -18,18 +18,18 @@ class_name = "MatchmakingQueue"
 name = "LOBBY"
 class_name = "LobbyDO"
 
-# Durable Object migrations (required for free plan)
-[[migrations]]
-tag = "v1"
-new_sqlite_classes = ["ChatRoom", "MatchmakingQueue", "LobbyDO"]
-
-# Static asset configuration (use assets binding for Hono serveStatic)
-assets = { directory = "./public" }
+# Static asset configuration (use assets binding for Worker static content)
+assets = { directory = "./public", binding = "ASSETS" }
 
 # Routes to serve the app on custom domain
 routes = [
   { pattern = "chat.pharmx.co.uk/*", zone_name = "pharmx.co.uk" }
 ]
+
+# Durable Object migrations (required for free plan)
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatRoom", "MatchmakingQueue", "LobbyDO"]
 
 # Cron triggers for cleanup and maintenance
 [triggers]

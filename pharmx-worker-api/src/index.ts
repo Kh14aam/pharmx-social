@@ -1,6 +1,5 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { serveStatic } from 'hono/cloudflare-workers'
 
 // Durable Object imports (required for export)
 import { ChatRoom } from './durable-objects/ChatRoom'
@@ -22,6 +21,9 @@ export interface Env {
 	CHAT_ROOMS: DurableObjectNamespace
 	MATCHMAKING_QUEUE: DurableObjectNamespace
 	LOBBY: DurableObjectNamespace
+
+	// Static assets binding
+	ASSETS: Fetcher
 }
 
 const app = new Hono()
@@ -32,14 +34,6 @@ app.use('*', cors({
 	allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 	allowHeaders: ['Content-Type', 'Authorization'],
 	credentials: true,
-}))
-
-// Serve static files (your beautiful frontend)
-app.use('/*', serveStatic({ 
-	root: './public',
-	onNotFound: (path, c) => {
-		console.log(`File not found: ${path}`)
-	}
 }))
 
 // Health check endpoint
@@ -152,13 +146,17 @@ async function createJWT(payload: any, secret: string): Promise<string> {
 	return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
 }
 
-// Catch-all for SPA routing - serve index.html for any unmatched routes
-app.get('*', serveStatic({ 
-	path: './public/index.html',
-	onNotFound: (path, c) => {
-		console.log(`SPA fallback for: ${path}`)
+// Static asset fetcher using ASSETS binding with SPA fallback
+app.get('*', async (c) => {
+	const env = c.env as any
+	const url = new URL(c.req.url)
+	const path = url.pathname === '/' ? '/index.html' : url.pathname
+	const res = await env.ASSETS.fetch(new Request(`https://assets${path}`))
+	if (res.status === 404) {
+		return env.ASSETS.fetch(new Request('https://assets/index.html'))
 	}
-}))
+	return res
+})
 
 export default app
 
