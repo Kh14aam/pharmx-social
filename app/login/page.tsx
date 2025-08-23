@@ -16,11 +16,27 @@ export default function LoginPage() {
     try {
       if (!mounted || isSubmitting) return
       setIsSubmitting(true)
-      const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://pharmx-api.kasimhussain333.workers.dev'
-      const url = `${apiBase}/login`
-      window.location.href = url
+      
+      // Create Google OAuth URL
+      const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
+      const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback')
+      const scope = encodeURIComponent('openid profile email')
+      const state = Math.random().toString(36).substring(7)
+      
+      const googleOAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${googleClientId}&` +
+        `redirect_uri=${redirectUri}&` +
+        `response_type=code&` +
+        `scope=${scope}&` +
+        `state=${state}`
+      
+      // Store state for verification
+      localStorage.setItem('oauth_state', state)
+      
+      // Redirect to Google OAuth
+      window.location.href = googleOAuthUrl
     } catch (e) {
-      console.error('[Login] redirect failed:', e)
+      console.error('[Login] Google OAuth failed:', e)
       setIsSubmitting(false)
     }
   }
