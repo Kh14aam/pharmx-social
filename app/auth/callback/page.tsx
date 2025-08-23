@@ -54,7 +54,7 @@ function AuthCallbackContent() {
 
         setHasRedirected(true)
         router.push('/login')
-      } catch (e) {
+      } catch {
         setHasRedirected(true)
         router.push('/login')
       }

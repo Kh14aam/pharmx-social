@@ -41,7 +41,7 @@ export function SessionProvider({
           try {
             const parsed = JSON.parse(userData)
             setUser(parsed)
-          } catch (e) {
+          } catch {
             localStorage.removeItem('pharmx_token')
             localStorage.removeItem('pharmx_user')
             setUser(null)

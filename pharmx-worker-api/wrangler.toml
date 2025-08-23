@@ -1,94 +1,81 @@
-name = "pharmx-api"
+name = "pharmx-worker-api"
 main = "src/index.ts"
 compatibility_date = "2024-08-21"
 compatibility_flags = ["nodejs_compat"]
 
-# Performance configurations
+# Production environment configuration
 [env.production]
-compatibility_date = "2024-08-21"
-compatibility_flags = ["nodejs_compat"]
+vars = { 
+  MAX_CONCURRENT_CALLS = "50",
+  MAX_QUEUE_SIZE = "200", 
+  MAX_CONNECTIONS_PER_ROOM = "10",
+  CALL_TIMEOUT_SECONDS = "1200",
+  QUEUE_TIMEOUT_MS = "300000",
+  RATE_LIMIT_WINDOW_MS = "900000",
+  RATE_LIMIT_MAX_REQUESTS = "5"
+}
 
-# Resource limits for production
-[env.production.vars]
-MAX_CONCURRENT_CALLS = "1000"
-MAX_QUEUE_SIZE = "50000"
-MAX_CONNECTIONS_PER_ROOM = "1000"
-CALL_TIMEOUT_SECONDS = "1200"
-QUEUE_TIMEOUT_MS = "300000"
-RATE_LIMIT_WINDOW_MS = "60000"
-RATE_LIMIT_MAX_REQUESTS = "100"
-
-# Development environment
+# Development environment configuration  
 [env.development]
-compatibility_date = "2024-08-21"
-compatibility_flags = ["nodejs_compat"]
+vars = { 
+  MAX_CONCURRENT_CALLS = "10",
+  MAX_QUEUE_SIZE = "50",
+  MAX_CONNECTIONS_PER_ROOM = "5", 
+  CALL_TIMEOUT_SECONDS = "600",
+  QUEUE_TIMEOUT_MS = "180000",
+  RATE_LIMIT_WINDOW_MS = "900000",
+  RATE_LIMIT_MAX_REQUESTS = "10"
+}
 
-[env.development.vars]
-MAX_CONCURRENT_CALLS = "100"
-MAX_QUEUE_SIZE = "1000"
-MAX_CONNECTIONS_PER_ROOM = "100"
-CALL_TIMEOUT_SECONDS = "1200"
-QUEUE_TIMEOUT_MS = "300000"
-RATE_LIMIT_WINDOW_MS = "60000"
-RATE_LIMIT_MAX_REQUESTS = "1000"
-
-# D1 Database binding
+# Database binding
 [[d1_databases]]
 binding = "DB"
 database_name = "pharmx-social-db"
 database_id = "9050344e-9b99-4651-a0cc-a5eaeed7c39d"
 
-# R2 Storage binding
+# Object storage binding
 [[r2_buckets]]
 binding = "AVATAR_STORAGE"
 bucket_name = "pharmx-avatars"
 
-# KV Namespace for sessions and caching
+# Key-value storage binding for sessions and caching
 [[kv_namespaces]]
 binding = "SESSIONS"
 id = "your-kv-namespace-id"
 preview_id = "your-preview-kv-namespace-id"
 
-# Durable Objects for real-time features
+# Durable Object bindings
 [[durable_objects.bindings]]
 name = "CHAT_ROOMS"
 class_name = "ChatRoom"
 
 [[durable_objects.bindings]]
-name = "MATCHMAKING_QUEUE"
+name = "MATCHMAKING_QUEUE"  
 class_name = "MatchmakingQueue"
 
 [[durable_objects.bindings]]
 name = "LOBBY"
 class_name = "LobbyDO"
 
-# Durable Object migrations
+# Production Durable Object memory limits
+[env.production.durable_objects]
+memory_limit = "128"
+
+# Analytics binding
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+
+# Database migrations
 [[migrations]]
 tag = "v1"
 new_classes = ["ChatRoom", "MatchmakingQueue", "LobbyDO"]
 
-# Performance optimizations
-[env.production.durable_objects]
-min_memory = 128
-max_memory = 512
-
-# Analytics and monitoring
-[[analytics_engine_datasets]]
-binding = "ANALYTICS"
-
-# Cron triggers for maintenance tasks
+# Cron triggers for cleanup and maintenance
 [triggers]
-crons = [
-  "0 */6 * * *",  # Every 6 hours - cleanup stale connections
-  "0 2 * * *"     # Daily at 2 AM - database maintenance
-]
+crons = ["0 2 * * *"]
 
-# Environment-specific secrets (set via wrangler secret)
-# AUTH0_DOMAIN
-# AUTH0_CLIENT_ID
-# AUTH0_CLIENT_SECRET
-# AUTH0_AUDIENCE
-# JWT_SECRET
-# TURN_SERVER_URL
-# TURN_USERNAME
-# TURN_CREDENTIAL
+# Note: The following secrets should be set via `wrangler secret put`:
+# JWT_SECRET - Required for JWT token signing
+# GOOGLE_CLIENT_ID - Google OAuth client ID
+# GOOGLE_CLIENT_SECRET - Google OAuth client secret  
+# GOOGLE_REDIRECT_URI - OAuth redirect URI

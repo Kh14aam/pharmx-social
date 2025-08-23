@@ -17,14 +17,7 @@ export interface Env {
   GOOGLE_CLIENT_ID?: string
   GOOGLE_CLIENT_SECRET?: string
   GOOGLE_REDIRECT_URI?: string
-  // Legacy fields retained for compatibility (not used for Google OAuth)
-  AUTH0_DOMAIN?: string
-  AUTH0_CLIENT_ID?: string
-  AUTH0_CLIENT_SECRET?: string
-  AUTH0_ISSUER_BASE_URL?: string
-  AUTH0_BASE_URL?: string
-  AUTH0_AUDIENCE?: string
-  NEXT_PUBLIC_AUTH0_CLIENT_ID?: string
+  // Application settings
   JWT_SECRET: string
   FRONTEND_URL?: string
   TURN_USERNAME?: string
