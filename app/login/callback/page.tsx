@@ -70,9 +70,44 @@ function LoginCallbackContent() {
           localStorage.setItem('pharmx_user', JSON.stringify(user))
           localStorage.setItem('pharmx_token', tokens.id_token)
           localStorage.removeItem('oauth_state') // Clean up
-          setHasRedirected(true)
-          router.push('/onboarding')
-          return
+          
+          // Check if user has existing profile
+          console.log('[Login Callback] Checking for existing profile...')
+          try {
+            const profileRes = await fetch(`${apiBase}/profile`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${tokens.id_token}`,
+                'Content-Type': 'application/json'
+              }
+            })
+            
+            if (profileRes.ok) {
+              const profileData = await profileRes.json()
+              console.log('[Login Callback] Profile found:', { hasName: !!profileData.name })
+              
+              if (profileData && profileData.name) {
+                // Existing user with profile - go to main app
+                console.log('[Login Callback] Existing user - redirecting to app')
+                setHasRedirected(true)
+                router.push('/app/voice')
+                return
+              }
+            }
+            
+            // No profile found or profile incomplete - go to onboarding
+            console.log('[Login Callback] No profile found - redirecting to onboarding')
+            setHasRedirected(true)
+            router.push('/onboarding')
+            return
+            
+          } catch (profileError) {
+            // Error checking profile (likely new user) - go to onboarding
+            console.log('[Login Callback] Profile check failed (new user) - redirecting to onboarding')
+            setHasRedirected(true)
+            router.push('/onboarding')
+            return
+          }
         }
 
         console.error('[Login Callback] Invalid response format')

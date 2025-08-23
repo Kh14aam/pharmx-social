@@ -53,54 +53,47 @@ export default function OnboardingPage() {
 
   const watchedFields = watch()
 
-  // Check if user already has a profile
+  // Check authentication and profile status
   useEffect(() => {
-    const checkExistingProfile = async () => {
+    const checkAuthAndProfile = async () => {
       console.log('[Onboarding] === ONBOARDING FLOW START ===')
-      console.log('[Onboarding] Checking if user already has profile...')
+      console.log('[Onboarding] Verifying authentication...')
       
-      // Get the stored token from localStorage
+      // Get the stored token and user data
       const token = localStorage.getItem('pharmx_token')
       const userData = localStorage.getItem('pharmx_user')
       console.log('[Onboarding] Stored data - Token:', !!token, 'User:', !!userData)
       
-      if (!token) {
-        console.log('[Onboarding] ❌ No token found, redirecting to login')
+      if (!token || !userData) {
+        console.log('[Onboarding] ❌ No authentication found, redirecting to login')
         router.push('/login')
         return
       }
       
-      if (!userData) {
-        console.log('[Onboarding] ❌ No user data found, redirecting to login')
-        router.push('/login')
-        return
-      }
+      console.log('[Onboarding] ✅ Authentication verified')
       
-      console.log('[Onboarding] ✅ Token and user data found')
-      
-      // Set the token in the API client for this session
+      // Set the token in the API client
       apiClient.setToken(token)
-      console.log('[Onboarding] ✅ Set token in API client')
       
-      // Check if profile exists
+      // Double-check if user already has a profile (safeguard for direct access)
       try {
         const profile = await apiClient.profile.get()
         if (profile && profile.name) {
-          console.log('[Onboarding] ✅ User already has profile, redirecting to app')
+          console.log('[Onboarding] ⚠️ User already has profile, redirecting to app')
           router.push('/app/voice')
           return
         }
-        console.log('[Onboarding] ✅ No existing profile, user can proceed with onboarding')
       } catch (error) {
-        console.log('[Onboarding] Profile check failed (expected for new users):', error)
+        console.log('[Onboarding] Profile check confirmed - no existing profile (expected for new users)')
         // This is expected for new users, continue with onboarding
-      } finally {
-        setCheckingProfile(false)
-        console.log('[Onboarding] === ONBOARDING FLOW END ===')
       }
+      
+      console.log('[Onboarding] ✅ Ready for profile creation')
+      setCheckingProfile(false)
+      console.log('[Onboarding] === ONBOARDING FLOW END ===')
     }
 
-    checkExistingProfile()
+    checkAuthAndProfile()
   }, [router])
 
   // Show loading while checking profile
@@ -182,11 +175,12 @@ export default function OnboardingPage() {
 
       toast({
         title: "Welcome to PharmX Social!",
-        description: "Your profile has been created",
+        description: "Your profile has been created successfully. Let's find you a voice chat!",
       })
 
-      // Redirect to app users page
-      router.push("/app/users")
+      // Redirect to main app - voice page
+      console.log('[Onboarding] Profile creation successful - redirecting to voice app')
+      router.push("/app/voice")
     } catch (error) {
       console.error('[Onboarding] Profile creation error:', error)
       
