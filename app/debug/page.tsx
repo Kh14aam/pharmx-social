@@ -5,9 +5,19 @@ import { useUser } from '@/components/providers/session-provider'
 import { useEffect, useState } from 'react'
 
 export default function DebugPage() {
-  const { isAuthenticated, isLoading, user, getAccessTokenSilently, error } = useAuth0()
+  const { isAuthenticated, isLoading, user, error } = useAuth0()
   const { user: sessionUser, isLoading: sessionLoading } = useUser()
-  const [localStorageData, setLocalStorageData] = useState<any>({})
+  const [localStorageData, setLocalStorageData] = useState<{
+    token: string | null;
+    user: unknown;
+    hasToken: boolean;
+    hasUser: boolean;
+  }>({
+    token: null,
+    user: null,
+    hasToken: false,
+    hasUser: false
+  })
 
   useEffect(() => {
     // Get localStorage data
@@ -59,7 +69,7 @@ export default function DebugPage() {
               <p><strong>Has Token:</strong> {localStorageData.hasToken ? 'Yes' : 'No'}</p>
               <p><strong>Has User:</strong> {localStorageData.hasUser ? 'Yes' : 'No'}</p>
               <p><strong>Token Preview:</strong> {localStorageData.token || 'None'}</p>
-              <p><strong>User Email:</strong> {localStorageData.user?.email || 'None'}</p>
+              <p><strong>User Email:</strong> {localStorageData.user && typeof localStorageData.user === 'object' && 'email' in localStorageData.user ? (localStorageData.user as { email: string }).email : 'None'}</p>
             </div>
           </div>
 

@@ -6,16 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Phone, PhoneOff, Mic, MicOff, Loader2, Heart, X, Clock, Volume2, VolumeX } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { SignalingClient, SignalingEventType } from "@/lib/voice/signaling"
 import { useRouter } from "next/navigation"
-import { apiClient } from "@/lib/api-client"
-
-const withApiBase = (url?: string) => {
-  if (!url) return ""
-  if (url.startsWith("http")) return url
-  const base = process.env.NEXT_PUBLIC_API_URL || ""
-  return `${base}${url}`
-}
 
 type VoiceState = "idle" | "searching" | "incoming_call" | "connecting" | "in_call" | "deciding" | "waiting_decision"
 
@@ -40,48 +31,10 @@ export default function VoicePage() {
   const [partner, setPartner] = useState<{ name: string; avatar: string; id: string } | null>(null)
   const [waitingMessageIndex, setWaitingMessageIndex] = useState(0)
   
-  // New state variables for enhanced WebRTC
-  const [callStatus, setCallStatus] = useState<'idle' | 'requesting' | 'searching' | 'connecting' | 'connected' | 'failed'>('idle')
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
-  const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null)
-  const [webSocket, setWebSocket] = useState<WebSocket | null>(null)
-  const [queuePosition, setQueuePosition] = useState<number>(0)
-  const [estimatedWaitTime, setEstimatedWaitTime] = useState<number>(0)
-  const [partnerInfo, setPartnerInfo] = useState<{ id: string; name: string; avatar: string } | null>(null)
-  
-  // Mock user for now - in real app this would come from auth context
-  const user = { sub: 'mock-user-id', email: 'user@example.com' }
-  
-  const signalingRef = useRef<SignalingClient | null>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Helper function to send signaling messages
-  const sendSignalingMessage = (message: any) => {
-    if (webSocket && webSocket.readyState === WebSocket.OPEN) {
-      webSocket.send(JSON.stringify(message))
-    }
-  }
-
-  // Helper function to start call timer
-  const startCallTimer = () => {
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current)
-    }
-    
-    countdownIntervalRef.current = setInterval(() => {
-      setRemainingSeconds(prev => {
-        if (prev <= 1) {
-          endCall()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-  }
 
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -136,649 +89,158 @@ export default function VoicePage() {
     }
   }, [])
 
-  // Cleanup function
-  const cleanup = useCallback(() => {
-    // Stop countdown
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current)
-      countdownIntervalRef.current = null
-    }
+  // Rotate waiting messages every few seconds
+  useEffect(() => {
+    if (state !== "searching") return
 
-    // Close WebRTC connection
-    if (pcRef.current) {
-      pcRef.current.close()
-      pcRef.current = null
-    }
+    const interval = setInterval(() => {
+      setWaitingMessageIndex((prev) => (prev + 1) % waitingMessages.length)
+    }, 3000)
 
-    // Stop local stream
+    return () => clearInterval(interval)
+  }, [state])
+
+  // Countdown timer for calls
+  useEffect(() => {
+    if (state !== "in_call") return
+
+    const interval = setInterval(() => {
+      setRemainingSeconds((prev) => {
+        if (prev <= 1) {
+          endCall()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    countdownIntervalRef.current = interval
+    return () => clearInterval(interval)
+  }, [state])
+
+  const startFindingVoice = useCallback(async () => {
+    try {
+      // Request microphone access first
+      await getMicrophoneStream()
+      
+      setState("searching")
+      
+      // Simulate finding a match after a delay
+      setTimeout(() => {
+        setPartner({
+          name: 'Demo User',
+          avatar: '/default-avatar.png',
+          id: 'demo-user-123'
+        })
+        setState("incoming_call")
+      }, 3000)
+      
+    } catch (error) {
+      console.error('Failed to start voice search:', error)
+      setState("idle")
+      
+      if (error instanceof Error && error.message.includes('Microphone')) {
+        toast({
+          title: "Microphone Access Required",
+          description: "Please allow microphone access to use voice chat",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: "Please check your internet connection and try again",
+          variant: "destructive",
+        })
+      }
+    }
+  }, [toast])
+
+  const cancelSearch = useCallback(() => {
+    setState("idle")
+  }, [])
+
+  const acceptCall = useCallback(async () => {
+    setState("connecting")
+    
+    // Simulate connecting
+    setTimeout(() => {
+      setState("in_call")
+    }, 2000)
+  }, [])
+
+  const declineCall = useCallback(() => {
+    setState("idle")
+    setPartner(null)
+  }, [])
+
+  const endCall = useCallback(() => {
+    // Stop media streams
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop())
       localStreamRef.current = null
     }
-
-    // Disconnect signaling
-    if (signalingRef.current) {
-      signalingRef.current.disconnect()
-      signalingRef.current = null
+    
+    // Clear countdown
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current)
+      countdownIntervalRef.current = null
     }
-
-    // Reset state
-    setIsMuted(false)
-    setRemainingSeconds(1200)
-    setCallId(null)
-    setDecision(null)
-    setPartner(null)
+    
+    setState("deciding")
   }, [])
 
-  // Start finding a voice
-  const startFindingVoice = async () => {
-    try {
-      // Check if running in a browser environment
-      if (typeof window === 'undefined' || !navigator.mediaDevices) {
-        toast({
-          title: "Browser not supported",
-          description: "Voice chat requires a modern browser with microphone support",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // Request microphone permission
-      await getMicrophoneStream()
-
-      setState("searching")
-
-      // Get auth token from API client
-      const token = apiClient.getToken()
-      console.log('[Voice] Retrieved token:', token)
-      console.log('[Voice] Token length:', token?.length)
-      console.log('[Voice] Token type:', typeof token)
+  const toggleMute = useCallback(() => {
+    setIsMuted(prev => {
+      const newMuted = !prev
       
-      if (!token) {
-        toast({
-          title: "Authentication required",
-          description: "Please sign in to use voice chat",
-          variant: "destructive",
-        })
-        router.push('/login')
-        return
-      }
-      
-      // Connect to signaling server
-      const wsUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'
-      const signalingUrl = `${wsUrl.replace('https://', 'wss://').replace('http://', 'ws://')}/signal/ws`
-      
-      const signaling = new SignalingClient(signalingUrl, token)
-      signalingRef.current = signaling
-
-      // Set up signaling event handlers
-      // Helper to preserve literal types for event names
-      const evt = <T extends SignalingEventType>(eventName: T) => eventName
-
-      signaling.on(evt('onStateChange'), (signalingState: string) => {
-        console.log('[Voice] Signaling state:', signalingState)
-      })
-
-      signaling.on(
-        evt('onPaired'),
-        async (
-          role: 'offerer' | 'answerer',
-          callId: string,
-          partner: { name: string; avatar: string; id: string }
-        ) => {
-          console.log(`[Voice] Paired as ${role} for call ${callId}`, partner)
-          setCallId(callId)
-
-          if (!partner?.name) {
-            toast({
-              title: 'Profile required',
-              description: 'Could not load partner profile',
-              variant: 'destructive'
-            })
-            setState('searching')
-            return
-          }
-
-          // Ensure avatar URL is absolute; UI will show fallback if still missing
-          setPartner({ ...partner, avatar: withApiBase(partner.avatar) })
-
-          if (role === 'answerer') {
-            // Show accept/decline for the receiver
-            setState('incoming_call')
-          } else {
-            // Caller auto-accepts and waits for connection
-            signalingRef.current?.sendAccept()
-            setState('connecting')
-          }
-
-          // Store role for later use
-          signalingRef.current!.role = role
-        }
-      )
-
-      signaling.on(evt('onBothAccepted'), async () => {
-        console.log('[Voice] Both users accepted, setting up WebRTC')
-        const role = signalingRef.current?.role || 'answerer'
-        await setupWebRTC(role)
-      })
-
-      signaling.on(evt('onCallDeclined'), () => {
-        console.log('[Voice] Partner declined the call, searching again')
-        toast({
-          title: 'They were busy',
-          description: 'Searching again...'
-        })
-        setPartner(null)
-        setState('searching')
-      })
-
-      signaling.on(evt('onOffer'), async (sdp) => {
-        if (pcRef.current) {
-          await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp))
-          const answer = await pcRef.current.createAnswer()
-          await pcRef.current.setLocalDescription(answer)
-          signaling.sendAnswer(answer)
-        }
-      })
-
-      signaling.on(evt('onAnswer'), async (sdp) => {
-        if (pcRef.current) {
-          await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp))
-        }
-      })
-
-      signaling.on(evt('onIceCandidate'), async (candidate) => {
-        if (pcRef.current) {
-          await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate))
-        }
-      })
-
-      signaling.on(evt('onCallStarted'), (seconds) => {
-        setState("in_call")
-        setRemainingSeconds(seconds)
-        
-        // Start countdown timer
-        countdownIntervalRef.current = setInterval(() => {
-          setRemainingSeconds(prev => {
-            if (prev <= 1) {
-              return 0
-            }
-            return prev - 1
-          })
-        }, 1000)
-      })
-
-      signaling.on(evt('onTick'), (seconds) => {
-        setRemainingSeconds(seconds)
-      })
-
-      signaling.on(evt('onCallEnded'), (reason) => {
-        console.log(`[Voice] Call ended: ${reason}`)
-        if (countdownIntervalRef.current) {
-          clearInterval(countdownIntervalRef.current)
-          countdownIntervalRef.current = null
-        }
-        setState("deciding")
-      })
-
-      signaling.on(evt('onDecisionWaiting'), () => {
-        setState("waiting_decision")
-      })
-
-      signaling.on(evt('onDecisionResult'), (result) => {
-        if (result === 'stayinchat') {
-          toast({
-            title: "Chat created",
-            description: "You can continue chatting in the Chats tab",
-          })
-          // Navigate to chats
-          router.push('/app/chats')
-        } else {
-          toast({
-            title: "Not added this time",
-            description: "You can try finding another voice",
-          })
-        }
-        cleanup()
-        setState("idle")
-      })
-
-      signaling.on(evt('onError'), (code, message) => {
-        console.error(`[Voice] Error ${code}: ${message}`)
-        
-        // Handle specific errors gracefully
-        if (code === 'ALREADY_CONNECTED') {
-          // Silently reconnect, don't show error to user
-          console.log('[Voice] Handling reconnection gracefully')
-          return
-        }
-        
-        // Only show critical errors to user
-        if (code === 'AUTH_FAILED') {
-          toast({
-            title: "Authentication required",
-            description: "Please sign in to use voice chat",
-            variant: "destructive",
-          })
-          router.push('/login')
-        } else if (state === "searching") {
-          // If error during search, silently retry
-          console.log('[Voice] Error during search, retrying...')
-          setTimeout(() => {
-            if (signalingRef.current && state === "searching") {
-              signalingRef.current.connect()
-            }
-          }, 2000)
-          return
-        }
-        
-        cleanup()
-        setState("idle")
-      })
-
-      // Connect to signaling server
-      signaling.connect()
-
-    } catch (error) {
-      console.error('[Voice] Error starting:', error)
-      toast({
-        title: "Microphone access denied",
-        description: "Please allow microphone access to use voice chat",
-        variant: "destructive",
-      })
-      cleanup()
-      setState("idle")
-    }
-  }
-
-  // Set up WebRTC connection
-  const setupWebRTC = async (role: 'offerer' | 'answerer') => {
-    try {
-      // Get ICE servers
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'
-      const turnResponse = await fetch(`${apiUrl}/api/v1/turn-credentials`)
-      const { iceServers } = await turnResponse.json()
-
-      // Create peer connection
-      const pc = new RTCPeerConnection({ iceServers })
-      pcRef.current = pc
-
-      // Add local stream
+      // Toggle audio track
       if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => {
-          pc.addTrack(track, localStreamRef.current!)
-        })
-      }
-
-      // Handle remote stream
-      pc.ontrack = (event) => {
-        if (remoteAudioRef.current) {
-          remoteAudioRef.current.srcObject = event.streams[0]
-        }
-      }
-
-      // Handle ICE candidates
-      pc.onicecandidate = (event) => {
-        if (event.candidate && signalingRef.current) {
-          signalingRef.current.sendIceCandidate(event.candidate)
-        }
-      }
-
-      // Handle connection state changes
-      pc.onconnectionstatechange = () => {
-        console.log('[Voice] Connection state:', pc.connectionState)
-        if (pc.connectionState === 'connected') {
-          // Send ready signal
-          signalingRef.current?.sendReady()
-        } else if (pc.connectionState === 'failed') {
-          toast({
-            title: "Connection failed",
-            description: "Couldn't connect. Trying someone new...",
-            variant: "destructive",
-          })
-          cleanup()
-          // Auto-retry
-          setTimeout(() => startFindingVoice(), 2000)
-        }
-      }
-
-      // Create offer if offerer
-      if (role === 'offerer') {
-        const offer = await pc.createOffer()
-        await pc.setLocalDescription(offer)
-        signalingRef.current?.sendOffer(offer)
-      }
-
-    } catch (error) {
-      console.error('[Voice] WebRTC setup error:', error)
-      toast({
-        title: "Connection error",
-        description: "Failed to establish voice connection",
-        variant: "destructive",
-      })
-      cleanup()
-      setState("idle")
-    }
-  }
-
-  // Cancel search
-  const cancelSearch = () => {
-    cleanup()
-    setState("idle")
-  }
-
-  // End call
-  const endCall = () => {
-    // This will trigger the decision phase
-    if (signalingRef.current?.getState() === 'in_call') {
-      // The server will handle ending the call and moving to decision phase
-      cleanup()
-      setState("deciding")
-    } else {
-      cleanup()
-      setState("idle")
-    }
-  }
-
-  // Toggle mute
-  const toggleMute = () => {
-    if (localStreamRef.current) {
-      const audioTrack = localStreamRef.current.getAudioTracks()[0]
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled
-        setIsMuted(!audioTrack.enabled)
-      }
-    }
-  }
-
-  // Toggle loud speaker
-  const toggleLoudSpeaker = () => {
-    if (remoteAudioRef.current) {
-      // In a real app, this would control the audio output device
-      // For now, we'll just toggle the state
-      setIsLoudSpeaker(!isLoudSpeaker)
-      
-      // You could also implement actual audio routing here
-      // For example, using the Web Audio API to route audio to different outputs
-    }
-  }
-
-  // Handle decision
-  const handleDecision = (choice: 'stay' | 'skip') => {
-    setDecision(choice)
-    signalingRef.current?.sendDecision(choice)
-    setState("waiting_decision")
-  }
-
-  // Accept incoming call
-  const acceptCall = () => {
-    console.log('[Voice] Accepting call')
-    signalingRef.current?.sendAccept()
-    // Wait for both users to accept
-    setState("connecting")
-  }
-
-  // Decline incoming call
-  const declineCall = () => {
-    console.log('[Voice] Declining call')
-    signalingRef.current?.sendDecline()
-    // The backend will handle putting us back in queue
-    setState("searching")
-  }
-
-  // Rotate waiting messages during search
-  useEffect(() => {
-    if (state === "searching") {
-      setWaitingMessageIndex(0) // Reset to first message
-      const interval = setInterval(() => {
-        setWaitingMessageIndex((prev) => (prev + 1) % waitingMessages.length)
-      }, 5000) // Change message every 5 seconds
-      
-      return () => clearInterval(interval)
-    }
-  }, [state])
-
-  // WebRTC configuration for optimal call quality
-  const rtcConfig = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' }
-    ],
-    iceCandidatePoolSize: 10,
-    iceTransportPolicy: 'all' as const
-  }
-
-  // Audio constraints for WhatsApp/Telegram level quality
-  const audioConstraints = {
-    echoCancellation: true,
-    noiseSuppression: true,
-    autoGainControl: true,
-    sampleRate: 48000,
-    channelCount: 1,
-    latency: 0.01,
-    googEchoCancellation: true,
-    googAutoGainControl: true,
-    googNoiseSuppression: true,
-    googHighpassFilter: true
-  }
-
-  const startVoiceCall = async () => {
-    try {
-      setCallStatus('requesting')
-      
-      // Request microphone access with optimal constraints
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: audioConstraints,
-        video: false
-      })
-      
-      setLocalStream(stream)
-      setCallStatus('searching')
-      
-      // Connect to matchmaking queue
-      await connectToMatchmaking()
-      
-    } catch (error) {
-      console.error('Failed to start voice call:', error)
-      setCallStatus('idle')
-      
-      if (error instanceof Error) {
-        if (error.name === 'NotAllowedError') {
-          toast({
-            title: "Microphone Access Required",
-            description: "Please allow microphone access to make voice calls",
-            variant: "destructive",
-          })
-        } else {
-          toast({
-            title: "Call Failed",
-            description: error.message || "Failed to start voice call",
-            variant: "destructive",
-          })
-        }
-      }
-    }
-  }
-
-  const connectToMatchmaking = async () => {
-    try {
-      const wsUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pharmx-api.kasimhussain333.workers.dev'
-      const ws = new WebSocket(`${wsUrl.replace('https://', 'wss://')}/matchmaking/ws`)
-      
-      ws.onopen = () => {
-        console.log('Connected to matchmaking queue')
-        setWebSocket(ws)
-        
-        // Send user info to queue
-        ws.send(JSON.stringify({
-          type: 'join',
-          userId: user?.sub,
-          preferences: {
-            audioQuality: 'high',
-            maxWaitTime: 300000 // 5 minutes
-          }
-        }))
-      }
-      
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          handleMatchmakingMessage(data)
-        } catch (error) {
-          console.error('Failed to parse matchmaking message:', error)
-        }
-      }
-      
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error)
-        setCallStatus('idle')
-        toast({
-          title: "Connection Error",
-          description: "Failed to connect to matchmaking service",
-          variant: "destructive",
+        localStreamRef.current.getAudioTracks().forEach(track => {
+          track.enabled = !newMuted
         })
       }
       
-      ws.onclose = () => {
-        console.log('Disconnected from matchmaking queue')
-        setWebSocket(null)
-        setCallStatus('idle')
-      }
-      
-    } catch (error) {
-      console.error('Failed to connect to matchmaking:', error)
-      setCallStatus('idle')
-    }
-  }
-
-  const handleMatchmakingMessage = (data: any) => {
-    switch (data.type) {
-      case 'queue_joined':
-        setQueuePosition(data.position)
-        setEstimatedWaitTime(data.estimatedWaitTime)
-        break
-        
-      case 'match_found':
-        setCallStatus('connecting')
-        setPartnerInfo({
-          id: data.partner,
-          name: 'Anonymous User',
-          avatar: '/default-avatar.png'
-        })
-        // Create peer connection with optimal settings
-        createPeerConnection(data.roomId)
-        break
-        
-      case 'queue_update':
-        setQueuePosition(data.position)
-        setEstimatedWaitTime(data.estimatedWaitTime)
-        break
-        
-      case 'error':
-        console.error('Matchmaking error:', data.message)
-        setCallStatus('idle')
-        toast({
-          title: "Matchmaking Error",
-          description: data.message || "Failed to find a match",
-          variant: "destructive",
-        })
-        break
-        
-      default:
-        console.warn('Unknown matchmaking message type:', data.type)
-    }
-  }
-
-  const createPeerConnection = (roomId: string) => {
-    try {
-      const pc = new RTCPeerConnection(rtcConfig)
-      setPeerConnection(pc)
-      
-      // Add local stream tracks
-      if (localStream) {
-        localStream.getTracks().forEach(track => {
-          pc.addTrack(track, localStream)
-        })
-      }
-      
-      // Set up event handlers
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          // Send ICE candidate to partner
-          sendSignalingMessage({
-            type: 'ice_candidate',
-            candidate: event.candidate
-          })
-        }
-      }
-      
-      pc.ontrack = (event) => {
-        setRemoteStream(event.streams[0])
-        setCallStatus('connected')
-        startCallTimer()
-      }
-      
-      pc.onconnectionstatechange = () => {
-        console.log('Connection state:', pc.connectionState)
-        if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-          handleCallFailure('Connection lost')
-        }
-      }
-      
-      pc.oniceconnectionstatechange = () => {
-        console.log('ICE connection state:', pc.iceConnectionState)
-        if (pc.iceConnectionState === 'failed') {
-          handleCallFailure('ICE connection failed')
-        }
-      }
-      
-      // Create and send offer
-      createOffer(pc)
-      
-    } catch (error) {
-      console.error('Failed to create peer connection:', error)
-      handleCallFailure('Failed to establish connection')
-    }
-  }
-
-  const createOffer = async (pc: RTCPeerConnection) => {
-    try {
-      const offer = await pc.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: false
-      })
-      
-      await pc.setLocalDescription(offer)
-      
-      // Send offer to partner
-      sendSignalingMessage({
-        type: 'offer',
-        offer: offer
-      })
-      
-    } catch (error) {
-      console.error('Failed to create offer:', error)
-      handleCallFailure('Failed to create connection offer')
-    }
-  }
-
-  const handleCallFailure = (reason: string) => {
-    console.error('Call failed:', reason)
-    setCallStatus('idle')
-    setLocalStream(null)
-    setRemoteStream(null)
-    setPeerConnection(null)
-    setWebSocket(null)
-    
-    toast({
-      title: "Call Failed",
-      description: reason,
-      variant: "destructive",
+      return newMuted
     })
-  }
+  }, [])
+
+  const toggleLoudSpeaker = useCallback(() => {
+    setIsLoudSpeaker(prev => !prev)
+    // Note: Actual speaker routing would be implemented here
+  }, [])
+
+  const handleDecision = useCallback(async (choice: "stay" | "skip") => {
+    setDecision(choice)
+    setState("waiting_decision")
+    
+    // Simulate decision handling
+    setTimeout(() => {
+      if (choice === "stay") {
+        toast({
+          title: "Great!",
+          description: "You can now chat with this person in your messages",
+          variant: "default",
+        })
+        router.push('/app/chats')
+      } else {
+        setState("idle")
+        setPartner(null)
+        setDecision(null)
+      }
+    }, 2000)
+  }, [toast, router])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop())
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-8rem)] px-4">
