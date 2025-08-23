@@ -1,6 +1,11 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 
+// Export Durable Objects (required by wrangler.toml)
+export { ChatRoom } from './durable-objects/ChatRoom'
+export { MatchmakingQueue } from './durable-objects/MatchmakingQueue'
+export { LobbyDO } from './durable-objects/LobbyDO'
+
 export interface Env {
   // OAuth Configuration
   GOOGLE_CLIENT_ID: string
