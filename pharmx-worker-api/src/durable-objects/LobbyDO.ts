@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid'
+// Using built-in crypto.randomUUID() instead of external uuid package
 
 interface User {
   id: string
@@ -376,7 +376,7 @@ export class LobbyDO {
     try {
       await this.env.DB.prepare(
         'INSERT INTO voice_decisions (id, call_id, user_id, choice) VALUES (?, ?, ?, ?)'
-      ).bind(uuidv4(), user.callId, userId, choice).run()
+      ).bind(crypto.randomUUID(), user.callId, userId, choice).run()
     } catch (e) {
       console.error('Failed to store decision:', e)
     }
@@ -603,7 +603,7 @@ export class LobbyDO {
     }
     
     // Create call record
-    const callId = uuidv4()
+    const callId = crypto.randomUUID()
     
     // Set up pairing
     userA.state = 'connecting'
@@ -742,7 +742,7 @@ export class LobbyDO {
         
         if (!existing) {
           // Create new chat
-          const chatId = uuidv4()
+          const chatId = crypto.randomUUID()
           await this.env.DB.prepare(
             `INSERT INTO chats (id, user1_id, user2_id, created_at)
              VALUES (?, ?, ?, datetime('now'))`
