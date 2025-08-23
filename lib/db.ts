@@ -1,9 +1,5 @@
-import { PrismaClient } from "@prisma/client"
+// Database types and schema are defined in ./db/schema.ts using Drizzle ORM
+// The actual database connection is handled by the Cloudflare Worker backend
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
-
-export const prisma = globalForPrisma.prisma ?? new PrismaClient()
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
+// This file exists to maintain compatibility with existing imports
+export const db = null // Database operations are handled by the Cloudflare Worker API
